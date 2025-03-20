@@ -1,0 +1,19 @@
+@startuml sd_unlock
+
+skinparam SequenceMessageAlignment center
+' skinparam dpi 300
+mainframe **sd** Unlock
+
+participant ":Mobile" as mobile
+participant ":Server" as server
+participant ":Database" as db
+participant ":EScooter" as escooter
+
+mobile -> server : unlock()
+server -> escooter : unlock()
+escooter -->> server : unlockack()
+server -> db : update_scooter_status()
+db -->> server : updateack
+server -->> mobile : unlockack
+
+@enduml

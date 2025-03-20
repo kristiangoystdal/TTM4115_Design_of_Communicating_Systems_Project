@@ -1,0 +1,26 @@
+@startuml sd_unreserve
+
+skinparam SequenceMessageAlignment center
+' skinparam dpi 300
+mainframe **sd** Unreserve
+
+participant ":Server" as server
+participant ":Mobile" as mobile
+participant ":EScooter" as escooter
+participant ":Database" as db
+
+alt cancel
+  mobile -> server : cancel_scooter()
+  server -> escooter : cancel()
+  escooter -->> server : cancelack()
+  server -> db : update_scooter_status()
+  db -->> server : updateack
+  server -->> mobile : cancelack
+else timeout
+  server -> mobile : timeout()
+  server -> escooter : timeout()
+  server -> db : update_scooter_status()
+  db -->> server : updateack
+end
+
+@enduml

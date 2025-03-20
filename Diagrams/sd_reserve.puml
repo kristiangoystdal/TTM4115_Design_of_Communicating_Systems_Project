@@ -1,0 +1,29 @@
+@startuml sd_reserve
+
+skinparam SequenceMessageAlignment center
+' skinparam dpi 400
+mainframe **sd** Reserve
+
+participant ":Mobile" as mobile
+participant ":Server" as server
+participant ":Database" as db
+participant ":EScooter" as escooter
+
+mobile -> server : reserve_scooter()
+server -> escooter : reserve()
+escooter -->> server : reserveack()
+
+alt reserveack = False
+    server -->> mobile : throw_error()
+else reserveack = True
+    server -> db : update_scooter_status()
+    db -->> server : updateack
+
+    alt updateack = False
+        server -->> mobile : throw_error()
+    else updateack = True
+        server -->> mobile : reserveack
+    end
+end
+
+@enduml

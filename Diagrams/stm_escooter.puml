@@ -1,0 +1,30 @@
+@startuml Escooter
+
+skinparam dpi 300
+mainframe **stm** Escooter
+
+Idle : entry / lights_free()
+
+Charging : entry / enable_charger()
+Charging : exit / disable_charger()
+
+Reserved : entry / lights_reserved()
+
+Driving : entry / start_display(); enable_motor(); unlock_wheel()
+Driving : exit / stop_display(); disable_motor(); lock_wheel()
+
+[*] -d-> Idle
+
+Idle -l-> Charging : charge / Inductive connection detected
+Charging -r-> Idle : no_charge / Charger disconnected
+
+Idle -d-> Driving : unlock / MQTT(escooters/{id} = "unlock")
+Driving -u-> Idle : lock / MQTT(escooters/{id} = "lock")
+
+Idle -r-> Reserved : reserve / MQTT(escooters/{id} = "reserve")
+Reserved -d-> Driving : unlock / MQTT(escooters/{id} = "unlock")
+Reserved -l-> Idle : timeout / MQTT(escooters/{id} = "timeout")
+Reserved -l-> Idle : cancel / MQTT(escooters/{id} = "cancel")
+
+
+@enduml

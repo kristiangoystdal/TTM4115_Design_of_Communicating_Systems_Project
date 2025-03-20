@@ -1,0 +1,26 @@
+@startuml sd_lock
+
+skinparam SequenceMessageAlignment center
+' skinparam dpi 400
+mainframe **sd** Lock
+
+participant ":Mobile" as mobile
+participant ":Server" as server
+participant ":EScooter" as escooter
+participant ":Database" as db
+participant ":ChargingStation" as chargingstation
+
+mobile -> server : lock()
+server -> escooter : lock()
+
+opt on_charging_station = True
+    chargingstation -> server : update()
+    server -> db : update_scooter_status()
+    db -->> server : updateack
+    server -->> chargingstation : updateack()
+end
+
+escooter -->> server : lockack()
+server -->> mobile : lockack
+
+@enduml

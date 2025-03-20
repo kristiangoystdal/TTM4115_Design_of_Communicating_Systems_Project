@@ -1,0 +1,22 @@
+@startuml mobile
+
+skinparam dpi 400
+mainframe **stm** Mobile
+
+[*] --> Idle
+
+Idle : entry / show_scooters(); show_unlocked()
+Idle : exit / hide_scooters()
+Reserved : entry / show_locked()
+Driving : entry / hide_scooter(); enable_timer() 
+Driving : exit / disable_timer()
+
+Idle --> Driving : on / unlock(userId, scooterId)
+Driving --> Idle : off / lock(userId)
+
+Idle --> Reserved  : msg / reserve(userId, scooterId)
+Reserved --> Idle : t / timeout()
+Reserved --> Idle : c / cancel()
+Reserved --> Driving : on / start_reserved(userId)
+
+@enduml

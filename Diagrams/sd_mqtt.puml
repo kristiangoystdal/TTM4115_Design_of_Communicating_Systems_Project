@@ -1,0 +1,21 @@
+@startuml sd_mqtt
+
+' skinparam SequenceMessageAlignment center
+' skinparam dpi 300
+mainframe **sd** MQTT
+
+participant "scooter[1]:EScooter" as escooter1
+participant "scooter[2]:EScooter" as escooter2
+participant ":Server" as server
+participant "station[1]:ChargingStation" as chargingstation1
+participant "station[2]:ChargingStation" as chargingstation2
+participant ":MQTTBroker" as mqttbroker
+
+escooter1 -> mqttbroker: subscribe(\n\t"escooters/1"\n)
+escooter2 -> mqttbroker: subscribe(\n\t"escooters/2"\n)
+server -> mqttbroker: subscribe(\n\t"escooters/+/acking"\n)
+server -> mqttbroker: subscribe(\n\t"chargingstations/+"\n)
+chargingstation1 -> mqttbroker: subscribe(\n\t"chargingstations/1/acking"\n)
+chargingstation2 -> mqttbroker: subscribe(\n\t"chargingstations/2/acking"\n)
+
+@enduml
