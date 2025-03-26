@@ -1,0 +1,29 @@
+#map {
+  height: 80vh;
+  width: 85%;
+  margin: 10px auto 0;
+  border: 1px solid #000;
+}
+#loading-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 2rem;
+}
+.notification {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  padding: 15px;
+  border-radius: 5px;
+  color: white;
+  display: none;
+  z-index: 1000;
+}
+.notification.success {
+  background-color: #4caf50;
+}
+.notification.error {
+  background-color: #f44336;
+}

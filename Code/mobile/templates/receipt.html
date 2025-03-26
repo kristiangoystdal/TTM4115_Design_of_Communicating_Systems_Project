@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='/css/styles.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='/css/receipt.css') }}"
+    />
+    <title>Receipt</title>
+  </head>
+  <body>
+    <nav>
+      <div class="navbar">
+        <div class="navbar-brand">
+          <a href="/">Elleve</a>
+        </div>
+        <div class="navbar-menu">
+          <a href="/">Home</a>
+          {% if session.username %}
+          <a href="/bookings">Bookings</a>
+          <a href="/history">History</a>
+          <a href="/logout">Logout</a>
+          {% else %}
+          <a href="/login">Login</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+    <div class="receipt-container">
+      <div class="receipt-header">
+        <h1>Booking Receipt</h1>
+      </div>
+      <div class="receipt-details">
+        <p><strong>Scooter ID:</strong> {{ booking.id }}</p>
+        <p><strong>Start Time:</strong> {{ booking.booking_time }}</p>
+        <p><strong>End Time:</strong> {{ booking.end_time }}</p>
+        <p><strong>Duration:</strong> {{ booking.duration }} minutes</p>
+        <p><strong>Total Price:</strong> {{ booking.price }} NOK</p>
+      </div>
+      <div class="receipt-footer">
+        <a href="/">Return to Home</a>
+      </div>
+    </div>
+  </body>
+</html>

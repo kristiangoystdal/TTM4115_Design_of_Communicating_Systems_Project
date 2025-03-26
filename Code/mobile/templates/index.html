@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='/css/styles.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    />
+    <title>This is the title of the webpage!</title>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+      .notification {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 15px;
+        border-radius: 5px;
+        color: white;
+        display: none;
+        z-index: 1000;
+      }
+      .notification.success {
+        background-color: #4caf50;
+      }
+      .notification.error {
+        background-color: #f44336;
+      }
+    </style>
+    <script>
+      async function displayMap() {
+        const map = L.map("map").setView([63.422, 10.395], 14);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        const response = await fetch("/scooters");
+        const scooters = await response.json();
+
+        scooters.forEach((scooter) => {
+          const marker = L.marker([scooter.latitude, scooter.longitude]).addTo(
+            map,
+          );
+          const popupContent = `
+            ID: ${scooter.id}<br>
+            Battery: ${scooter.battery_level}%<br>
+            <form action="/book/${scooter.id}" method="POST" style="margin-top: 5px;">
+              <button type="submit">Book</button>
+            </form>
+          `;
+          marker.bindPopup(popupContent);
+        });
+      }
+
+      function showNotification(message, type) {
+        const notification = document.createElement("div");
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        notification.style.display = "block";
+
+        setTimeout(() => {
+          notification.style.display = "none";
+          document.body.removeChild(notification);
+        }, 3000);
+      }
+    </script>
+  </head>
+  <body onload="displayMap()">
+    <nav>
+      <div class="navbar">
+        <div class="navbar-brand">
+          <a href="/">Elleve</a>
+        </div>
+        <div class="navbar-menu">
+          {% if session.username %}
+          <a href="/bookings">Bookings</a>
+          <a href="/logout">Logout</a>
+          {% else %}
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+    <div id="map">
+      <div id="loading-text">Loading map...</div>
+    </div>
+  </body>
+</html>

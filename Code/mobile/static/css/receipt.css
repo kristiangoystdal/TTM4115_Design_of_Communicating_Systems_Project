@@ -1,0 +1,29 @@
+.receipt-container {
+  max-width: 600px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+}
+.receipt-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.receipt-details {
+  margin-bottom: 20px;
+}
+.receipt-details p {
+  margin: 5px 0;
+}
+.receipt-footer {
+  text-align: center;
+}
+.receipt-footer a {
+  text-decoration: none;
+  color: #fff;
+  background-color: #4caf50;
+  padding: 10px 20px;
+  border-radius: 5px;
+}

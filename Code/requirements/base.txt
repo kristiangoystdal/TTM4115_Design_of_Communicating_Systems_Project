@@ -1,0 +1,8 @@
+fastapi==0.115.12
+itsdangerous==2.2.0
+jinja2==3.1.6
+paho-mqtt==2.1.0
+python-multipart==0.0.20
+pytz==2025.2
+stmpy==0.7.5
+uvicorn==0.34.0

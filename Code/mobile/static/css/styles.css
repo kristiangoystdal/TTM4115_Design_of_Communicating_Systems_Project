@@ -1,0 +1,82 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+#map {
+  height: 80vh;
+  width: 85%;
+  margin: 10px auto 0;
+  border: 1px solid #000;
+}
+#loading-text {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  font-size: 2rem;
+}
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #333;
+  padding: 1rem;
+}
+.navbar a {
+  color: white;
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+}
+.navbar a:hover {
+  background-color: #575757;
+}
+.login-container {
+  width: 300px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+.login-container label {
+  display: block;
+  margin-bottom: 8px;
+}
+.login-container input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.login-container button {
+  width: 100%;
+  padding: 10px;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.login-container button:hover {
+  background-color: #575757;
+}
+.notification {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  padding: 15px;
+  border-radius: 5px;
+  color: white;
+  display: none;
+  z-index: 1000;
+}
+.notification.success {
+  background-color: #4caf50;
+}
+.notification.error {
+  background-color: #f44336;
+}
+.user-booked {
+  opacity: 0.5;
+}
