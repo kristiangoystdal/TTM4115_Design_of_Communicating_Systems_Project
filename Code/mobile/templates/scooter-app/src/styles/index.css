@@ -1,0 +1,14 @@
+@media screen and (min-width: 768px), screen and (orientation: landscape) {
+  body {
+    display: none;
+    background: #000;
+    color: white;
+  }
+
+  body::before {
+    content: "This app is only available in mobile portrait mode.";
+    display: block;
+    text-align: center;
+    padding: 2rem;
+  }
+}
