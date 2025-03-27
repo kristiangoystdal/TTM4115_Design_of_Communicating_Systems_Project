@@ -48,12 +48,23 @@
             ID: ${scooter.id}<br>
             Battery: ${scooter.battery_level}%<br>
             ${
-              scooter.is_user_booked
+              scooter.is_user_booked && !scooter.is_driving
                 ? "<p>This scooter is booked by you.</p>"
                 : `<form action="/book/${scooter.id}" method="POST">
                     <button type="submit">Book</button>
                   </form>`
             }
+            <br>
+            ${
+              scooter.is_driving 
+                ? `<form action="/end_drive/${scooter.id}" method="POST">
+                    <button type="submit">End Drive</button>
+                  </form>`
+                : `<form action="/start_drive/${scooter.id}" method="POST">
+                    <button type="submit">Start Drive</button>
+                  </form>`
+            }
+            
           `;
           marker.bindPopup(popupContent);
         });

@@ -30,6 +30,9 @@ from mobile.db_connector import (
     get_user_booking_history,
     register_user,
     end_booking,
+    start_drive,
+    end_drive,
+    nuke_db,
 )
 
 
@@ -126,25 +129,30 @@ def scooters(request: Request) -> JSONResponse:
 
     if session:
         conn, cur = connect_db()
-        user_id = cur.execute(
+        user_row = cur.execute(
             "SELECT id FROM users WHERE username = ?", (session["username"],)
-        ).fetchone()[0]
+        ).fetchone()
         conn.close()
 
-    all_scooters = get_scooters()
-    conn, cur = connect_db()
+        if user_row:
+            user_id = user_row[0]
 
-    user_booked_scooters = set(
-        row[0]
-        for row in cur.execute(
+    all_scooters = get_scooters()
+
+    user_booked_scooters = set()
+
+    if user_id:
+        conn, cur = connect_db()
+        rows = cur.execute(
             "SELECT scooter_id FROM bookings WHERE user_id = ? AND end_time IS NULL",
             (user_id,),
         ).fetchall()
-    )
+        conn.close()
 
-    conn.close()
+        user_booked_scooters = {row[0] for row in rows}
 
-    filtered_scooters = []
+    filtered_scooters: list[dict[str, float | int | str]] = []
+
     for scooter in all_scooters:
         if scooter["id"] in user_booked_scooters:
             scooter["is_user_booked"] = True
@@ -304,7 +312,72 @@ def charging_stations() -> JSONResponse:
     return JSONResponse(content=stations_data)
 
 
+@app.post("/start_drive/{scooter_id}")
+def start_drive_route(request: Request, scooter_id: int) -> Response:
+    if not (session := get_session(request)):
+        return templates.TemplateResponse(
+            LOGIN_HTML,
+            {
+                "request": request,
+                "session": {},
+                "error": "You must be logged in to start a drive.",
+            },
+        )
+
+    if start_drive(session["username"], scooter_id, datetime.now(TIMEZONE)):
+        return templates.TemplateResponse(
+            INDEX_HTML,
+            {
+                "request": request,
+                "session": session,
+                "message": f"Drive for scooter {scooter_id} started successfully!",
+            },
+        )
+
+    return templates.TemplateResponse(
+        INDEX_HTML,
+        {
+            "request": request,
+            "session": session,
+            "error": "Failed to start drive. Scooter might already be in use.",
+        },
+    )
+
+
+@app.post("/end_drive/{scooter_id}")
+def end_drive_route(request: Request, scooter_id: int) -> Response:
+    if not (session := get_session(request)):
+        return templates.TemplateResponse(
+            LOGIN_HTML,
+            {
+                "request": request,
+                "session": {},
+                "error": "You must be logged in to end a drive.",
+            },
+        )
+
+    if end_drive(session["username"], scooter_id, datetime.now(TIMEZONE)):
+        return templates.TemplateResponse(
+            INDEX_HTML,
+            {
+                "request": request,
+                "session": session,
+                "message": f"Drive for scooter {scooter_id} ended successfully!",
+            },
+        )
+
+    return templates.TemplateResponse(
+        INDEX_HTML,
+        {
+            "request": request,
+            "session": session,
+            "error": "Failed to end drive. Please try again.",
+        },
+    )
+
+
 def main() -> None:
+    nuke_db()
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)

@@ -120,7 +120,7 @@ def get_scooters() -> list[dict[str, Any]]:
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT id, latitude, longitude, battery_level, is_booked
+        SELECT id, latitude, longitude, battery_level, is_booked, is_driving
         FROM scooters
         WHERE battery_level > 20
         """
@@ -132,6 +132,7 @@ def get_scooters() -> list[dict[str, Any]]:
             "longitude": row[2],
             "battery_level": row[3],
             "is_booked": bool(row[4]),
+            "is_driving": bool(row[5]),
         }
         for row in rows
     ]
@@ -363,3 +364,60 @@ def get_charging_stations() -> list[dict[str, float]]:
     ]
     conn.close()
     return stations
+
+
+def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
+    conn, cur = connect_db()
+    existing_drive = cur.execute(
+        """
+        SELECT id FROM scooters
+        WHERE id = ? AND is_driving = 1
+        """,
+        (scooter_id,),
+    ).fetchone()
+
+    if existing_drive:
+        conn.close()
+        return False
+
+    try:
+        cur.execute(
+            """
+            UPDATE scooters
+            SET is_driving = 1
+            WHERE id = ?
+            """,
+            (scooter_id,),
+        )
+    except IntegrityError:
+        conn.close()
+        return False
+
+    conn.commit()
+    conn.close()
+    return True
+
+
+def end_drive(user_id: int, scooter_id: int, end_time: str) -> None:
+    conn, cur = connect_db()
+
+    row = cur.execute(
+        """
+        SELECT id FROM scooters
+        WHERE id = ? AND is_driving = 1
+        """,
+        (scooter_id,),
+    ).fetchone()
+
+    scooter_id = row[0]
+    cur.execute(
+        """
+        UPDATE scooters
+        SET is_driving = 0
+        WHERE id = ?
+        """,
+        (scooter_id,),
+    )
+    conn.commit()
+    conn.close()
+    return

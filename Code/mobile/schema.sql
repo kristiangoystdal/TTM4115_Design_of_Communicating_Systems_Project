@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS scooters (
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     battery_level INTEGER NOT NULL,
-    is_booked INTEGER DEFAULT 0
+    is_booked INTEGER DEFAULT 0,
+    is_driving INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS charging_stations (
@@ -35,3 +36,4 @@ CREATE TABLE IF NOT EXISTS bookings (
             ON DELETE NO ACTION
             ON UPDATE CASCADE
 );
+
