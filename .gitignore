@@ -5,3 +5,5 @@
 **/.env
 **/.venv/*
 **/venv/*
+
+**/database.db

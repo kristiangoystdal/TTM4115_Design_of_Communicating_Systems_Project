@@ -11,28 +11,12 @@
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
     />
-    
-    <title>Scooter</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='/css/index.css') }}"
+    />
+    <title>This is the title of the webpage!</title>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-
-    <style>
-      .notification {
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        padding: 15px;
-        border-radius: 5px;
-        color: white;
-        display: none;
-        z-index: 1000;
-      }
-      .notification.success {
-        background-color: #4caf50;
-      }
-      .notification.error {
-        background-color: #f44336;
-      }
-    </style>
     <script>
       async function displayMap() {
         const map = L.map("map").setView([63.422, 10.395], 14);
@@ -42,21 +26,51 @@
             '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         }).addTo(map);
 
-        const response = await fetch("/scooters");
-        const scooters = await response.json();
+        const scooterResponse = await fetch("/scooters");
+        const scooters = await scooterResponse.json();
 
         scooters.forEach((scooter) => {
-          const marker = L.marker([scooter.latitude, scooter.longitude]).addTo(
-            map,
-          );
+          const scooterIcon = L.icon({
+            iconUrl: "{{ url_for('static', path='/img/e_scooter_icon.png') }}",
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            className: scooter.is_user_booked ? "user-booked" : "",
+          });
+
+          const marker = L.marker([scooter.latitude, scooter.longitude], {
+            icon: scooterIcon,
+            opacity: scooter.is_user_booked ? 0.5 : 1.0, // Adjust transparency
+          }).addTo(map);
+
           const popupContent = `
             ID: ${scooter.id}<br>
             Battery: ${scooter.battery_level}%<br>
-            <form action="/book/${scooter.id}" method="POST" style="margin-top: 5px;">
-              <button type="submit">Book</button>
-            </form>
+            ${
+              scooter.is_user_booked
+                ? "<p>This scooter is booked by you.</p>"
+                : `<form action="/book/${scooter.id}" method="POST">
+                    <button type="submit">Book</button>
+                  </form>`
+            }
           `;
           marker.bindPopup(popupContent);
+        });
+
+        const stationResponse = await fetch("/charging_stations");
+        const stations = await stationResponse.json();
+
+        const stationIcon = L.icon({
+          iconUrl:
+            "{{ url_for('static', path='/img/charging_station_icon.png') }}",
+          iconSize: [40, 40],
+          iconAnchor: [20, 40],
+        });
+
+        stations.forEach((station) => {
+          const marker = L.marker([station.latitude, station.longitude], {
+            icon: stationIcon,
+          }).addTo(map);
+          marker.bindPopup(`Charging Station ID: ${station.id}`);
         });
       }
 
@@ -83,6 +97,7 @@
         <div class="navbar-menu">
           {% if session.username %}
           <a href="/bookings">Bookings</a>
+          <a href="/history">History</a>
           <a href="/logout">Logout</a>
           {% else %}
           <a href="/login">Login</a>
@@ -91,6 +106,15 @@
         </div>
       </div>
     </nav>
+    {% if message %}
+    <div class="notification success">
+      {{ message }}
+    </div>
+    {% elif error %}
+    <div class="notification error">
+      {{ error }}
+    </div>
+    {% endif %}
     <div id="map">
       <div id="loading-text">Loading map...</div>
     </div>
