@@ -2,11 +2,10 @@ from datetime import datetime
 
 import uvicorn
 from fastapi import FastAPI, Form, Request, Response
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeSerializer
-
 from mobile.constants import (
     BOOKINGS_HTML,
     HISTORY_HTML,
@@ -22,26 +21,21 @@ from mobile.db_connector import (
     check_user,
     connect_db,
     create_tables,
-    generate_scooters,
+    end_booking,
     generate_charging_stations,
-    get_scooters,
+    generate_scooters,
     get_charging_stations,
+    get_scooters,
     get_user_active_bookings,
     get_user_booking_history,
-    nuke_db,
     register_user,
-    end_booking,
 )
 
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="mobile/static"), name="static")
 
-app.mount(
-    "/",
-    StaticFiles(directory="mobile/templates/scooter-app/dist", html=True),
-    name="static",
-)
+templates = Jinja2Templates(directory="mobile/templates")
 serializer = URLSafeSerializer(SECRET_KEY)
 
 
@@ -64,7 +58,7 @@ def login_form(request: Request) -> Response:
     if session := get_session(request):
         return RedirectResponse(url="/")
     return templates.TemplateResponse(
-        INDEX_HTML, {"request": request, "session": session}
+        LOGIN_HTML, {"request": request, "session": session}
     )
 
 
@@ -74,7 +68,7 @@ def login(
 ) -> Response:
     if not check_user(username, password):
         return templates.TemplateResponse(
-            INDEX_HTML,
+            LOGIN_HTML,
             {
                 "request": request,
                 "session": {},
@@ -93,7 +87,7 @@ def register_form(request: Request) -> Response:
     if session := get_session(request):
         return RedirectResponse(url="/")
     return templates.TemplateResponse(
-        INDEX_HTML, {"request": request, "session": session}
+        REGISTER_HTML, {"request": request, "session": session}
     )
 
 
@@ -101,20 +95,20 @@ def register_form(request: Request) -> Response:
 def register(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
-    if register_user(username, password):
-        response = RedirectResponse(url="/", status_code=302)
-        session = serializer.dumps({"username": username})
-        response.set_cookie("session", session)
-        return response
+    if not register_user(username, password):
+        return templates.TemplateResponse(
+            REGISTER_HTML,
+            {
+                "request": request,
+                "session": {},
+                "error": "Username already exists",
+            },
+        )
 
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {
-            "request": request,
-            "session": {},
-            "error": "Username already exists",
-        },
-    )
+    response = RedirectResponse(url="/", status_code=302)
+    session = serializer.dumps({"username": username})
+    response.set_cookie("session", session)
+    return response
 
 
 @app.get("/logout")
@@ -124,32 +118,27 @@ def logout() -> RedirectResponse:
     return response
 
 
-@app.get("/scooters", response_model=list[dict[str, bool | float | int]])
+@app.get("/scooters", response_model=list[dict[str, float | int | str]])
 def scooters(request: Request) -> JSONResponse:
     session = get_session(request)
     user_id = None
+    conn, cur = connect_db()
 
     if session:
-        conn, cur = connect_db()
         user_id = cur.execute(
             "SELECT id FROM users WHERE username = ?", (session["username"],)
         ).fetchone()[0]
         conn.close()
 
     all_scooters = get_scooters()
-    conn, cur = connect_db()
-
-    user_booked_scooters = set(
-        row[0]
-        for row in cur.execute(
-            "SELECT scooter_id FROM bookings WHERE user_id = ? AND end_time IS NULL",
-            (user_id,),
-        ).fetchall()
-    )
-
+    rows = cur.execute(
+        "SELECT scooter_id FROM bookings WHERE user_id = ? AND end_time IS NULL",
+        (user_id,),
+    ).fetchall()
     conn.close()
 
-    filtered_scooters: list[dict[str, bool | float | int]] = []
+    user_booked_scooters = {row[0] for row in rows}
+    filtered_scooters: list[dict[str, float | int | str]] = []
 
     for scooter in all_scooters:
         if scooter["id"] in user_booked_scooters:
@@ -204,7 +193,7 @@ def book_scooter_route(request: Request, scooter_id: int) -> Response:
 def bookings_page(request: Request) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            INDEX_HTML,
+            LOGIN_HTML,
             {
                 "request": request,
                 "session": {},
@@ -220,7 +209,7 @@ def bookings_page(request: Request) -> Response:
 
     bookings = get_user_active_bookings(user_id)
     return templates.TemplateResponse(
-        INDEX_HTML,
+        BOOKINGS_HTML,
         {"request": request, "session": session, "bookings": bookings},
     )
 
@@ -229,7 +218,7 @@ def bookings_page(request: Request) -> Response:
 def end_booking_route(request: Request, booking_id: int) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            INDEX_HTML,
+            LOGIN_HTML,
             {
                 "request": request,
                 "session": {},
@@ -252,30 +241,30 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
     ).fetchone()
     conn.close()
 
-    if booking:
-        booking_time = datetime.fromisoformat(booking[1]).astimezone(TIMEZONE)
-        end_time_date = datetime.fromisoformat(booking[2]).astimezone(TIMEZONE)
-        duration = (end_time_date - booking_time).total_seconds() / 60
-
-        booking_details = {
-            "id": booking[0],
-            "booking_time": booking_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
-            "duration": round(duration),
-            "price": round(price, 2),
-        }
-
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": session,
-                "booking": booking_details,
-            },
+    if not booking:
+        return JSONResponse(
+            content={"error": "Failed to end booking"}, status_code=400
         )
 
-    return JSONResponse(
-        content={"error": "Failed to end booking"}, status_code=400
+    booking_time = datetime.fromisoformat(booking[1]).astimezone(TIMEZONE)
+    end_time_date = datetime.fromisoformat(booking[2]).astimezone(TIMEZONE)
+    minutes = (end_time_date - booking_time).total_seconds() / 60
+
+    booking_details = {
+        "id": booking[0],
+        "booking_time": booking_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": round(minutes),
+        "price": round(price, 2),
+    }
+
+    return templates.TemplateResponse(
+        RECEIPT_HTML,
+        {
+            "request": request,
+            "session": session,
+            "booking": booking_details,
+        },
     )
 
 
@@ -283,7 +272,7 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
 def history_page(request: Request) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            INDEX_HTML,
+            LOGIN_HTML,
             {
                 "request": request,
                 "session": {},
@@ -299,7 +288,7 @@ def history_page(request: Request) -> Response:
 
     history = get_user_booking_history(user_id)
     return templates.TemplateResponse(
-        INDEX_HTML,
+        HISTORY_HTML,
         {"request": request, "session": session, "history": history},
     )
 
@@ -311,7 +300,6 @@ def charging_stations() -> JSONResponse:
 
 
 def main() -> None:
-    nuke_db()
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)

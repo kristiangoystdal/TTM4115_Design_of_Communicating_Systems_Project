@@ -10,7 +10,6 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/mobile/templates/scooter-app/dist/', // <-- added base property
   plugins: [
     Vue({
       template: { transformAssetUrls },
