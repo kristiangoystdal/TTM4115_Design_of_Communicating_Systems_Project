@@ -6,20 +6,10 @@
           <v-card-title class="text-h5 justify-center">Login</v-card-title>
           <v-card-text>
             <v-form @submit.prevent="handleLogin" ref="loginForm">
-              <v-text-field
-                label="Username"
-                v-model="form.username"
-                prepend-icon="mdi-account"
-                required
-              ></v-text-field>
+              <v-text-field label="Username" v-model="form.username" prepend-icon="mdi-account" required></v-text-field>
 
-              <v-text-field
-                label="Password"
-                v-model="form.password"
-                type="password"
-                prepend-icon="mdi-lock"
-                required
-              ></v-text-field>
+              <v-text-field label="Password" v-model="form.password" type="password" prepend-icon="mdi-lock"
+                required></v-text-field>
 
               <v-btn type="submit" color="primary" block class="mt-4">
                 Login

@@ -1,13 +1,13 @@
 <template>
   <nav class="bottom-navbar">
-    <a href="/">Elleve</a>
+    <router-link to="/">Home</router-link>
     <template v-if="username">
-      <a href="/bookings">Bookings</a>
-      <a href="/logout">Logout</a>
+      <router-link to="/bookings">Bookings</router-link>
+      <router-link to="/logout">Logout</router-link>
     </template>
     <template v-else>
-      <a href="/login">Login</a>
-      <a href="/register">Register</a>
+      <router-link to="/login">Login</router-link>
+      <router-link to="/register">Register</router-link>
     </template>
   </nav>
 </template>
