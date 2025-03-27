@@ -11,7 +11,8 @@ from mobile.helpers import get_price, hash_password
 
 def nuke_db() -> None:
     os.remove(DATABASE_FILE)
-    connect_db()
+    conn, _ = connect_db()
+    conn.close()
 
 
 def connect_db() -> tuple[Connection, Cursor]:
