@@ -3,9 +3,9 @@
     <v-row justify="center" align="center">
       <v-col cols="12" sm="8" md="4">
         <v-card elevation="4">
-          <v-card-title class="text-h5 justify-center">Login</v-card-title>
+          <v-card-title class="text-h5 justify-center">Register</v-card-title>
           <v-card-text>
-            <v-form @submit.prevent="handleLogin" ref="loginForm">
+            <v-form @submit.prevent="handleRegister" ref="registerForm">
               <v-text-field
                 label="Username"
                 v-model="form.username"
@@ -22,7 +22,7 @@
               ></v-text-field>
 
               <v-btn type="submit" color="primary" block class="mt-4">
-                Login
+                Register
               </v-btn>
 
               <v-alert v-if="error" type="error" dense class="mt-3">
@@ -32,7 +32,7 @@
           </v-card-text>
 
           <v-card-actions class="justify-center">
-            <v-btn text to="/register">Don't have an account? Register</v-btn>
+            <v-btn text to="/login">Already have an account? Login</v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -42,7 +42,7 @@
 
 <script>
 export default {
-  name: 'LoginForm',
+  name: 'RegisterForm',
   data() {
     return {
       form: {
@@ -53,9 +53,9 @@ export default {
     }
   },
   methods: {
-    async handleLogin() {
+    async handleRegister() {
       try {
-        const response = await fetch('/login', {
+        const response = await fetch('/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -72,7 +72,7 @@ export default {
           }
         }
       } catch (err) {
-        this.error = 'Something went wrong during login.'
+        this.error = 'Something went wrong during registration.'
         console.error(err)
       }
     }

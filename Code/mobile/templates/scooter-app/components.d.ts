@@ -8,8 +8,14 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Account: typeof import('./src/components/Account.vue')['default']
+    ActiveBookings: typeof import('./src/components/ActiveBookings.vue')['default']
+    BookingHistory: typeof import('./src/components/BookingHistory.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
     Login: typeof import('./src/components/Login.vue')['default']
+    MapView: typeof import('./src/components/MapView.vue')['default']
+    NavBar: typeof import('./src/components/NavBar.vue')['default']
+    ReceiptOverlay: typeof import('./src/components/ReceiptOverlay.vue')['default']
+    Register: typeof import('./src/components/Register.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
