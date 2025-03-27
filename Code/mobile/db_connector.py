@@ -1,16 +1,18 @@
-import hashlib
 import os
 import secrets
 import sqlite3
+from datetime import datetime
 from sqlite3 import Connection, Cursor, IntegrityError
 from typing import Any
-from datetime import datetime
-from mobile.constants import DATABASE_FILE, SCHEMA_FILE, SECRET_KEY, TIMEZONE
+
+from mobile.constants import DATABASE_FILE, SCHEMA_FILE, TIMEZONE
+from mobile.helpers import get_price, hash_password
 
 
 def nuke_db() -> None:
     os.remove(DATABASE_FILE)
-    connect_db()
+    conn, _ = connect_db()
+    conn.close()
 
 
 def connect_db() -> tuple[Connection, Cursor]:
@@ -31,15 +33,7 @@ def create_tables() -> None:
     conn.close()
 
 
-def hash_password(password: str, salt: str) -> str:
-    """Hashes a password using SHA-256. Both salting and peppering are
-    used.
-    """
-    return hashlib.sha256(f"{password}{salt}{SECRET_KEY}".encode()).hexdigest()
-
-
 def check_user(username: str, password: str) -> bool:
-    username = username.lower().strip()
     conn, cur = connect_db()
     row = cur.execute(
         "SELECT password_hash, salt FROM users WHERE username = ?", (username,)
@@ -54,23 +48,7 @@ def check_user(username: str, password: str) -> bool:
     return stored_hash == password_hash
 
 
-def validate_password(username: str, password: str) -> bool:
-    if len(password) < 8:
-        return False
-    if not any(char.isdigit() for char in password):
-        return False
-    if not any(char.islower() for char in password):
-        return False
-    if not any(char.isupper() for char in password):
-        return False
-    if username in password:
-        return False
-    return True
-
-
 def register_user(username: str, password: str) -> bool:
-    username = username.lower().strip()
-
     # if not validate_password(username, password):
     #     return False
 
@@ -184,10 +162,6 @@ def book_scooter(user_id: int, scooter_id: int, booking_time: str) -> bool:
     return True
 
 
-def get_price(minutes: float) -> float:
-    return round(10 + max(0, 2.5 * minutes), 2)
-
-
 def end_booking(booking_id: int, end_time: str) -> float:
     conn, cur = connect_db()
     cur.execute(
@@ -227,8 +201,8 @@ def end_booking(booking_id: int, end_time: str) -> float:
 
     booking_time = datetime.fromisoformat(booking_time).astimezone(TIMEZONE)
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
-    duration = (end_time_date - booking_time).total_seconds() / 60
-    return get_price(duration)
+    minutes = (end_time_date - booking_time).total_seconds() / 60
+    return get_price(minutes)
 
 
 def get_user_bookings(user_id: int) -> dict[str, float | int | str]:
@@ -315,8 +289,8 @@ def get_user_booking_history(
     for row in rows:
         booking_time = datetime.fromisoformat(row[4]).astimezone(TIMEZONE)
         end_time = datetime.fromisoformat(row[5]).astimezone(TIMEZONE)
-        duration = (end_time - booking_time).total_seconds() / 60
-        price = get_price(duration)
+        minutes = (end_time - booking_time).total_seconds() / 60
+        price = get_price(minutes)
         history.append(
             {
                 "id": row[0],
@@ -328,6 +302,7 @@ def get_user_booking_history(
                 "price": price,
             }
         )
+
     return history
 
 

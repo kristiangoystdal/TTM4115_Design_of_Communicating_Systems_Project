@@ -2,7 +2,7 @@ from datetime import datetime
 
 import uvicorn
 from fastapi import FastAPI, Form, Request, Response
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import URLSafeSerializer
@@ -22,10 +22,11 @@ from mobile.db_connector import (
     check_user,
     connect_db,
     create_tables,
-    generate_scooters,
+    end_booking,
     generate_charging_stations,
-    get_scooters,
+    generate_scooters,
     get_charging_stations,
+    get_scooters,
     get_user_active_bookings,
     get_user_booking_history,
     register_user,
@@ -34,6 +35,7 @@ from mobile.db_connector import (
     end_drive,
     nuke_db,
 )
+from mobile.helpers import clean_username
 
 
 app = FastAPI()
@@ -70,6 +72,8 @@ def login_form(request: Request) -> Response:
 def login(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
+    username = clean_username(username)
+
     if not check_user(username, password):
         return templates.TemplateResponse(
             LOGIN_HTML,
@@ -99,20 +103,22 @@ def register_form(request: Request) -> Response:
 def register(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
-    if register_user(username, password):
-        response = RedirectResponse(url="/", status_code=302)
-        session = serializer.dumps({"username": username})
-        response.set_cookie("session", session)
-        return response
+    username = clean_username(username)
 
-    return templates.TemplateResponse(
-        REGISTER_HTML,
-        {
-            "request": request,
-            "session": {},
-            "error": "Username already exists",
-        },
-    )
+    if not register_user(username, password):
+        return templates.TemplateResponse(
+            REGISTER_HTML,
+            {
+                "request": request,
+                "session": {},
+                "error": "Username already exists",
+            },
+        )
+
+    response = RedirectResponse(url="/", status_code=302)
+    session = serializer.dumps({"username": username})
+    response.set_cookie("session", session)
+    return response
 
 
 @app.get("/logout")
@@ -126,10 +132,10 @@ def logout() -> RedirectResponse:
 def scooters(request: Request) -> JSONResponse:
     session = get_session(request)
     user_id = None
+    conn, cur = connect_db()
 
     if session:
-        conn, cur = connect_db()
-        user_row = cur.execute(
+        user_id = cur.execute(
             "SELECT id FROM users WHERE username = ?", (session["username"],)
         ).fetchone()
         conn.close()
@@ -138,19 +144,13 @@ def scooters(request: Request) -> JSONResponse:
             user_id = user_row[0]
 
     all_scooters = get_scooters()
+    rows = cur.execute(
+        "SELECT scooter_id FROM bookings WHERE user_id = ? AND end_time IS NULL",
+        (user_id,),
+    ).fetchall()
+    conn.close()
 
-    user_booked_scooters = set()
-
-    if user_id:
-        conn, cur = connect_db()
-        rows = cur.execute(
-            "SELECT scooter_id FROM bookings WHERE user_id = ? AND end_time IS NULL",
-            (user_id,),
-        ).fetchall()
-        conn.close()
-
-        user_booked_scooters = {row[0] for row in rows}
-
+    user_booked_scooters = {row[0] for row in rows}
     filtered_scooters: list[dict[str, float | int | str]] = []
 
     for scooter in all_scooters:
@@ -254,30 +254,30 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
     ).fetchone()
     conn.close()
 
-    if booking:
-        booking_time = datetime.fromisoformat(booking[1]).astimezone(TIMEZONE)
-        end_time_date = datetime.fromisoformat(booking[2]).astimezone(TIMEZONE)
-        duration = (end_time_date - booking_time).total_seconds() / 60
-
-        booking_details = {
-            "id": booking[0],
-            "booking_time": booking_time.strftime("%Y-%m-%d %H:%M:%S"),
-            "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
-            "duration": round(duration),
-            "price": round(price, 2),
-        }
-
-        return templates.TemplateResponse(
-            RECEIPT_HTML,
-            {
-                "request": request,
-                "session": session,
-                "booking": booking_details,
-            },
+    if not booking:
+        return JSONResponse(
+            content={"error": "Failed to end booking"}, status_code=400
         )
 
-    return JSONResponse(
-        content={"error": "Failed to end booking"}, status_code=400
+    booking_time = datetime.fromisoformat(booking[1]).astimezone(TIMEZONE)
+    end_time_date = datetime.fromisoformat(booking[2]).astimezone(TIMEZONE)
+    minutes = (end_time_date - booking_time).total_seconds() / 60
+
+    booking_details = {
+        "id": booking[0],
+        "booking_time": booking_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": round(minutes),
+        "price": round(price, 2),
+    }
+
+    return templates.TemplateResponse(
+        RECEIPT_HTML,
+        {
+            "request": request,
+            "session": session,
+            "booking": booking_details,
+        },
     )
 
 
