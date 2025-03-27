@@ -31,6 +31,7 @@ from mobile.db_connector import (
     get_user_booking_history,
     register_user,
 )
+from mobile.helpers import clean_username
 
 
 app = FastAPI()
@@ -67,6 +68,8 @@ def login_form(request: Request) -> Response:
 def login(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
+    username = clean_username(username)
+
     if not check_user(username, password):
         return templates.TemplateResponse(
             LOGIN_HTML,
@@ -96,6 +99,8 @@ def register_form(request: Request) -> Response:
 def register(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
+    username = clean_username(username)
+
     if not register_user(username, password):
         return templates.TemplateResponse(
             REGISTER_HTML,

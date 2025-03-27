@@ -34,7 +34,6 @@ def create_tables() -> None:
 
 
 def check_user(username: str, password: str) -> bool:
-    username = username.lower().strip()
     conn, cur = connect_db()
     row = cur.execute(
         "SELECT password_hash, salt FROM users WHERE username = ?", (username,)
@@ -50,8 +49,6 @@ def check_user(username: str, password: str) -> bool:
 
 
 def register_user(username: str, password: str) -> bool:
-    username = username.lower().strip()
-
     # if not validate_password(username, password):
     #     return False
 
