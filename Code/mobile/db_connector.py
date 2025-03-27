@@ -3,6 +3,7 @@ import os
 import secrets
 import sqlite3
 from sqlite3 import Connection, Cursor, IntegrityError
+from typing import Any
 from datetime import datetime
 from mobile.constants import DATABASE_FILE, SCHEMA_FILE, SECRET_KEY, TIMEZONE
 
@@ -70,8 +71,8 @@ def validate_password(username: str, password: str) -> bool:
 def register_user(username: str, password: str) -> bool:
     username = username.lower().strip()
 
-    if not validate_password(username, password):
-        return False
+    # if not validate_password(username, password):
+    #     return False
 
     conn, cur = connect_db()
     salt = secrets.token_urlsafe(8)
@@ -115,7 +116,7 @@ def generate_scooters(center_lat: float, center_lng: float) -> None:
     conn.close()
 
 
-def get_scooters() -> list[dict[str, bool | float | int]]:
+def get_scooters() -> list[dict[str, Any]]:
     conn, cur = connect_db()
     rows = cur.execute(
         """
@@ -323,7 +324,7 @@ def get_user_booking_history(
                 "battery_level": row[3],
                 "booking_time": booking_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
-                "price": round(price, 2),
+                "price": price,
             }
         )
     return history

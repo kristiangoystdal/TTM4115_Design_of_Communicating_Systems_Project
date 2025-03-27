@@ -28,7 +28,6 @@ from mobile.db_connector import (
     get_charging_stations,
     get_user_active_bookings,
     get_user_booking_history,
-    nuke_db,
     register_user,
     end_booking,
 )
@@ -120,7 +119,7 @@ def logout() -> RedirectResponse:
     return response
 
 
-@app.get("/scooters", response_model=list[dict[str, bool | float | int]])
+@app.get("/scooters", response_model=list[dict[str, float | int | str]])
 def scooters(request: Request) -> JSONResponse:
     session = get_session(request)
     user_id = None
@@ -145,8 +144,7 @@ def scooters(request: Request) -> JSONResponse:
 
     conn.close()
 
-    filtered_scooters: list[dict[str, bool | float | int]] = []
-
+    filtered_scooters = []
     for scooter in all_scooters:
         if scooter["id"] in user_booked_scooters:
             scooter["is_user_booked"] = True
@@ -307,7 +305,6 @@ def charging_stations() -> JSONResponse:
 
 
 def main() -> None:
-    nuke_db()
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)
