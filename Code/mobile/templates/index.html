@@ -15,7 +15,9 @@
       rel="stylesheet"
       href="{{ url_for('static', path='/css/index.css') }}"
     />
-    <title>This is the title of the webpage!</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', path='/img/favicon.ico') }}">
+
+    <title>Scooters</title>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
       async function displayMap() {
