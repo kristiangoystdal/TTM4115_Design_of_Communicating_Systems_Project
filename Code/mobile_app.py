@@ -137,11 +137,7 @@ def scooters(request: Request) -> JSONResponse:
     if session:
         user_id = cur.execute(
             "SELECT id FROM users WHERE username = ?", (session["username"],)
-        ).fetchone()
-        conn.close()
-
-        if user_row:
-            user_id = user_row[0]
+        ).fetchone()[0]
 
     all_scooters = get_scooters()
     rows = cur.execute(
