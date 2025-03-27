@@ -1,135 +1,200 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', path='/css/styles.css') }}"
-    />
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-    />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', path='/css/index.css') }}"
-    />
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', path='/img/favicon.ico') }}">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link
+			rel="stylesheet"
+			href="{{ url_for('static', path='/css/styles.css') }}"
+		/>
+		<link
+			rel="stylesheet"
+			href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+		/>
+		<link
+			rel="stylesheet"
+			href="{{ url_for('static', path='/css/index.css') }}"
+		/>
+		<link
+			rel="icon"
+			type="image/x-icon"
+			href="{{ url_for('static', path='/img/favicon.ico') }}"
+		/>
 
-    <title>Scooters</title>
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script>
-      async function displayMap() {
-        const map = L.map("map").setView([63.422, 10.395], 14);
+		<title>Scooters</title>
+		<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+		<script>
+			async function displayMap() {
+				const map = L.map("map").setView([63.422, 10.395], 14);
 
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        }).addTo(map);
+				L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+					attribution:
+						'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				}).addTo(map);
 
-        const scooterResponse = await fetch("/scooters");
-        const scooters = await scooterResponse.json();
+				const scooterResponse = await fetch("/scooters");
+				const scooters = await scooterResponse.json();
 
-        scooters.forEach((scooter) => {
-          const scooterIcon = L.icon({
-            iconUrl: "{{ url_for('static', path='/img/e_scooter_icon.png') }}",
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-            className: scooter.is_user_booked ? "user-booked" : "",
-          });
+				const scooter_taken = scooters.some(
+					(scooter) => scooter.is_driving || scooter.is_user_booked
+				);
 
-          const marker = L.marker([scooter.latitude, scooter.longitude], {
-            icon: scooterIcon,
-            opacity: scooter.is_user_booked ? 0.5 : 1.0, // Adjust transparency
-          }).addTo(map);
+				showNotification(
+					`Scooter ${scooter_taken} is currently in use.`,
+					"error"
+				);
+				if (scooters.length === 0) {
+					const loadingText = document.getElementById("loading-text");
+					loadingText.textContent = "No scooters available.";
+				} else if (scooter_taken) {
+					scooters.forEach((scooter) => {
+						if (scooter.is_driving || scooter.is_user_booked) {
+							showNotification(
+								`Scooter ${scooter.id} is currently in use.`,
+								"error"
+							);
 
-          const popupContent = `
-            ID: ${scooter.id}<br>
-            Battery: ${scooter.battery_level}%<br>
-            ${
-              scooter.is_user_booked && !scooter.is_driving
-                ? "<p>This scooter is booked by you.</p>"
-                : `<form action="/book/${scooter.id}" method="POST">
-                    <button type="submit">Book</button>
-                  </form>`
-            }
-            <br>
-            ${
-              scooter.is_driving 
-                ? `<form action="/end_drive/${scooter.id}" method="POST">
-                    <button type="submit">End Drive</button>
-                  </form>`
-                : `<form action="/start_drive/${scooter.id}" method="POST">
-                    <button type="submit">Start Drive</button>
-                  </form>`
-            }
-            
-          `;
-          marker.bindPopup(popupContent);
-        });
+							const scooterIcon = L.icon({
+								iconUrl:
+									"{{ url_for('static', path='/img/e_scooter_icon.png') }}",
+								iconSize: [40, 40],
+								iconAnchor: [20, 40],
+								className: scooter.is_user_booked ? "user-booked" : "",
+								className: scooter.is_driving ? "driving" : "",
+							});
 
-        const stationResponse = await fetch("/charging_stations");
-        const stations = await stationResponse.json();
+              const marker = L.marker([scooter.latitude, scooter.longitude], {
+                icon: scooterIcon,
+                opacity: scooter.is_user_booked ? 1 : 1.0, // Adjust transparency
+                filter: scooter.is_user_booked ? "brightness(0) saturate(100%) invert(32%) sepia(91%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(85%)" : "",
+							}).addTo(map);
 
-        const stationIcon = L.icon({
-          iconUrl:
-            "{{ url_for('static', path='/img/charging_station_icon.png') }}",
-          iconSize: [40, 40],
-          iconAnchor: [20, 40],
-        });
+							const popupContent = `
+			                                ID: ${scooter.id}<br>
+			                                Battery: ${scooter.battery_level}%<br>
+			                                ${
+																				scooter.is_driving
+																					? ""
+																					: scooter.is_user_booked
+																					? "<p>This scooter is booked by you.</p>"
+																					: `<form action="/book/${scooter.id}" method="POST">
+			                                  <button type="submit">Book</button>
+			                                </form>`
+																			}
+			                                <br>
+			                                ${
+																				scooter.is_driving
+																					? `<form action="/end_drive/${scooter.id}" method="POST">
+			                                  <button type="submit">End Drive</button>
+			                                </form>`
+																					: `<form action="/start_drive/${scooter.id}" method="POST">
+			                                  <button type="submit">Start Drive</button>
+			                                </form>`
+																			}
 
-        stations.forEach((station) => {
-          const marker = L.marker([station.latitude, station.longitude], {
-            icon: stationIcon,
-          }).addTo(map);
-          marker.bindPopup(`Charging Station ID: ${station.id}`);
-        });
-      }
+			                              `;
 
-      function showNotification(message, type) {
-        const notification = document.createElement("div");
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        document.body.appendChild(notification);
-        notification.style.display = "block";
+							marker.bindPopup(popupContent);
+						}
+					});
+				} else {
+					scooters.forEach((scooter) => {
+						const scooterIcon = L.icon({
+							iconUrl:
+								"{{ url_for('static', path='/img/e_scooter_icon.png') }}",
+							iconSize: [40, 40],
+							iconAnchor: [20, 40],
+							className: scooter.is_user_booked ? "user-booked" : "",
+						});
 
-        setTimeout(() => {
-          notification.style.display = "none";
-          document.body.removeChild(notification);
-        }, 3000);
-      }
-    </script>
-  </head>
-  <body onload="displayMap()">
-    <nav>
-      <div class="navbar">
-        <div class="navbar-brand">
-          <a href="/">Elleve</a>
-        </div>
-        <div class="navbar-menu">
-          {% if session.username %}
-          <a href="/bookings">Bookings</a>
-          <a href="/history">History</a>
-          <a href="/logout">Logout</a>
-          {% else %}
-          <a href="/login">Login</a>
-          <a href="/register">Register</a>
-          {% endif %}
-        </div>
-      </div>
-    </nav>
-    {% if message %}
-    <div class="notification success">
-      {{ message }}
-    </div>
-    {% elif error %}
-    <div class="notification error">
-      {{ error }}
-    </div>
-    {% endif %}
-    <div id="map">
-      <div id="loading-text">Loading map...</div>
-    </div>
-  </body>
+						const marker = L.marker([scooter.latitude, scooter.longitude], {
+							icon: scooterIcon,
+							opacity: scooter.is_user_booked ? 0.5 : 1.0, // Adjust transparency
+						}).addTo(map);
+
+						const popupContent = `
+			           ID: ${scooter.id}<br>
+			           Battery: ${scooter.battery_level}%<br>
+			           ${
+										scooter.is_user_booked && !scooter.is_driving
+											? "<p>This scooter is booked by you.</p>"
+											: `<form action="/book/${scooter.id}" method="POST">
+			                   <button type="submit">Book</button>
+			                 </form>`
+									}
+			           <br>
+			           ${
+										scooter.is_driving
+											? `<form action="/end_drive/${scooter.id}" method="POST">
+			                   <button type="submit">End Drive</button>
+			                 </form>`
+											: `<form action="/start_drive/${scooter.id}" method="POST">
+			                   <button type="submit">Start Drive</button>
+			                 </form>`
+									}
+
+			         `;
+
+						marker.bindPopup(popupContent);
+					});
+				}
+
+				const stationResponse = await fetch("/charging_stations");
+				const stations = await stationResponse.json();
+
+				const stationIcon = L.icon({
+					iconUrl:
+						"{{ url_for('static', path='/img/charging_station_icon.png') }}",
+					iconSize: [40, 40],
+					iconAnchor: [20, 40],
+				});
+
+				stations.forEach((station) => {
+					const marker = L.marker([station.latitude, station.longitude], {
+						icon: stationIcon,
+					}).addTo(map);
+					marker.bindPopup(`Charging Station ID: ${station.id}`);
+				});
+			}
+
+			function showNotification(message, type) {
+				const notification = document.createElement("div");
+				notification.className = `notification ${type}`;
+				notification.textContent = message;
+				document.body.appendChild(notification);
+				notification.style.display = "block";
+
+				setTimeout(() => {
+					notification.style.display = "none";
+					document.body.removeChild(notification);
+				}, 3000);
+			}
+		</script>
+	</head>
+
+	<body onload="displayMap()">
+		<nav>
+			<div class="navbar">
+				<div class="navbar-brand">
+					<a href="/">Elleve</a>
+				</div>
+				<div class="navbar-menu">
+					{% if session.username %}
+					<a href="/bookings">Bookings</a>
+					<a href="/history">History</a>
+					<a href="/logout">Logout</a> {% else %}
+					<a href="/login">Login</a>
+					<a href="/register">Register</a> {% endif %}
+				</div>
+			</div>
+		</nav>
+		{% if message %}
+		<div class="notification success">{{ message }}</div>
+		{% elif error %}
+		<div class="notification error">{{ error }}</div>
+		{% endif %}
+		<div id="map">
+			<div id="loading-text">Loading map...</div>
+		</div>
+	</body>
 </html>
