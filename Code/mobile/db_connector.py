@@ -359,7 +359,7 @@ def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
         cur.execute(
             """
             UPDATE scooters
-            SET is_driving = 1
+            SET is_driving = 1, is_booked = 0
             WHERE id = ?
             """,
             (scooter_id,),
