@@ -37,7 +37,11 @@ from mobile.db_connector import (
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="mobile/static"), name="static")
 
-templates = Jinja2Templates(directory="mobile/templates/scooter-app/dist/")
+app.mount(
+    "/",
+    StaticFiles(directory="mobile/templates/scooter-app/dist", html=True),
+    name="static",
+)
 serializer = URLSafeSerializer(SECRET_KEY)
 
 
