@@ -343,15 +343,27 @@ def get_charging_stations() -> list[dict[str, float]]:
 
 def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
     conn, cur = connect_db()
-    existing_drive = cur.execute(
+    existing_booking = cur.execute(
         """
-        SELECT id FROM scooters
-        WHERE id = ? AND is_driving = 1
+        SELECT id FROM drives
+        WHERE scooter_id = ? AND end_time IS NULL
         """,
         (scooter_id,),
     ).fetchone()
 
-    if existing_drive:
+    if existing_booking:
+        conn.close()
+        return False
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO drives (user_id, scooter_id, driving_time)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, scooter_id, start_time),
+        )
+    except IntegrityError:
         conn.close()
         return False
 
@@ -373,18 +385,32 @@ def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
     return True
 
 
-def end_drive(user_id: int, scooter_id: int, end_time: str) -> None:
+def end_drive(scooter_id: int, end_time: str) -> None:
     conn, cur = connect_db()
+    cur.execute(
+        """
+        UPDATE drives
+        SET end_time = ?, is_active = 0
+        WHERE id = ? AND end_time IS NULL
+        """,
+        (end_time, scooter_id),
+    )
+    conn.commit()
 
     row = cur.execute(
         """
-        SELECT id FROM scooters
-        WHERE id = ? AND is_driving = 1
+        SELECT scooter_id, driving_time, end_time
+        FROM drives
+        WHERE id = ?
         """,
         (scooter_id,),
     ).fetchone()
 
-    scooter_id = row[0]
+    if row is None:
+        conn.close()
+        return 0.0
+
+    scooter_id, booking_time, end_time = row
     cur.execute(
         """
         UPDATE scooters
@@ -395,4 +421,8 @@ def end_drive(user_id: int, scooter_id: int, end_time: str) -> None:
     )
     conn.commit()
     conn.close()
-    return
+
+    booking_time = datetime.fromisoformat(booking_time).astimezone(TIMEZONE)
+    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
+    minutes = (end_time_date - booking_time).total_seconds() / 60
+    return get_price(minutes)
