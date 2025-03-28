@@ -367,7 +367,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         SELECT d.id, d.driving_time, d.end_time, s.latitude, s.longitude
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
-        WHERE d.id = ?
+        WHERE d.scooter_id = ?
         """,
         (scooter_id,),
     ).fetchone()
@@ -375,7 +375,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
 
     if not drive:
         return JSONResponse(
-            content={"error": "Failed to end booking"}, status_code=400
+            content={"error": "Failed to end drive"}, status_code=400
         )
 
     driving_time = datetime.fromisoformat(drive[1]).astimezone(TIMEZONE)
@@ -395,7 +395,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         {
             "request": request,
             "session": session,
-            "driving": drive_details,
+            "booking": drive_details,
         },
     )
 
