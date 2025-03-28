@@ -275,10 +275,10 @@ def get_user_booking_history(
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT b.id, s.latitude, s.longitude, s.battery_level, b.booking_time, b.end_time
-        FROM bookings AS b
-        JOIN scooters AS s ON b.scooter_id = s.id
-        WHERE b.user_id = ? AND b.is_active = 0
+        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.booking_time, d.end_time
+        FROM drives AS d
+        JOIN scooters AS s ON d.scooter_id = s.id
+        WHERE d.user_id = ? AND d.is_active = 0
         """,
         (user_id,),
     ).fetchall()
@@ -385,23 +385,26 @@ def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
     return True
 
 
-def end_drive(scooter_id: int, end_time: str) -> None:
+def end_drive(scooter_id: int, end_time: str) -> float:
     conn, cur = connect_db()
+
+    # Update the drive record
     cur.execute(
         """
         UPDATE drives
         SET end_time = ?, is_active = 0
-        WHERE id = ? AND end_time IS NULL
+        WHERE scooter_id = ? AND end_time IS NULL
         """,
         (end_time, scooter_id),
     )
     conn.commit()
 
+    # Fetch the updated drive details
     row = cur.execute(
         """
         SELECT scooter_id, driving_time, end_time
         FROM drives
-        WHERE id = ?
+        WHERE scooter_id = ?
         """,
         (scooter_id,),
     ).fetchone()
@@ -410,19 +413,26 @@ def end_drive(scooter_id: int, end_time: str) -> None:
         conn.close()
         return 0.0
 
-    scooter_id, booking_time, end_time = row
+    # Extract data and validate
+    scooter_id_from_drive, driving_time, end_time = row
+    if not driving_time or not end_time:
+        conn.close()
+        return 0.0
+
+    # Update the scooter status
     cur.execute(
         """
         UPDATE scooters
         SET is_driving = 0
         WHERE id = ?
         """,
-        (scooter_id,),
+        (scooter_id_from_drive,),
     )
     conn.commit()
     conn.close()
 
-    booking_time = datetime.fromisoformat(booking_time).astimezone(TIMEZONE)
+    # Calculate duration and price
+    driving_time = datetime.fromisoformat(driving_time).astimezone(TIMEZONE)
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
-    minutes = (end_time_date - booking_time).total_seconds() / 60
+    minutes = (end_time_date - driving_time).total_seconds() / 60
     return get_price(minutes)
