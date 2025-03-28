@@ -37,3 +37,20 @@ CREATE TABLE IF NOT EXISTS bookings (
             ON UPDATE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS drives (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    scooter_id INTEGER NOT NULL,
+    driving_time TEXT NOT NULL,
+    end_time TEXT,
+    is_active INTEGER DEFAULT 1,
+    FOREIGN KEY (user_id)
+        REFERENCES users (id)
+            ON DELETE NO ACTION
+            ON UPDATE CASCADE,
+    FOREIGN KEY (scooter_id)
+        REFERENCES scooters (id)
+            ON DELETE NO ACTION
+            ON UPDATE CASCADE
+);
+
