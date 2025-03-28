@@ -39,21 +39,12 @@
 					(scooter) => scooter.is_driving || scooter.is_user_booked
 				);
 
-				showNotification(
-					`Scooter ${scooter_taken} is currently in use.`,
-					"error"
-				);
 				if (scooters.length === 0) {
 					const loadingText = document.getElementById("loading-text");
 					loadingText.textContent = "No scooters available.";
 				} else if (scooter_taken) {
 					scooters.forEach((scooter) => {
 						if (scooter.is_driving || scooter.is_user_booked) {
-							showNotification(
-								`Scooter ${scooter.id} is currently in use.`,
-								"error"
-							);
-
 							const scooterIcon = L.icon({
 								iconUrl:
 									"{{ url_for('static', path='/img/e_scooter_icon.png') }}",
@@ -63,10 +54,12 @@
 								className: scooter.is_driving ? "driving" : "",
 							});
 
-              const marker = L.marker([scooter.latitude, scooter.longitude], {
-                icon: scooterIcon,
-                opacity: scooter.is_user_booked ? 1 : 1.0, // Adjust transparency
-                filter: scooter.is_user_booked ? "brightness(0) saturate(100%) invert(32%) sepia(91%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(85%)" : "",
+							const marker = L.marker([scooter.latitude, scooter.longitude], {
+								icon: scooterIcon,
+								opacity: scooter.is_user_booked ? 1 : 1.0, // Adjust transparency
+								filter: scooter.is_user_booked
+									? "brightness(0) saturate(100%) invert(32%) sepia(91%) saturate(500%) hue-rotate(180deg) brightness(95%) contrast(85%)"
+									: "",
 							}).addTo(map);
 
 							const popupContent = `
