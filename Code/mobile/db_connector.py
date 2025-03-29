@@ -275,7 +275,7 @@ def get_user_booking_history(
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.booking_time, d.end_time
+        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.user_id = ? AND d.is_active = 0
