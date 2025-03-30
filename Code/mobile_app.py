@@ -62,6 +62,17 @@ def get_session(request: Request) -> dict[str, str]:
     return serializer.loads(session)
 
 
+def fetch_user_id(cur, session):
+    if not session or "username" not in session:
+        return None
+
+    row = cur.execute(
+        "SELECT id FROM users WHERE username = ?", (session["username"],)
+    ).fetchone()
+
+    return row[0] if row else None
+
+
 @app.get("/")
 def read_root(request: Request) -> Response:
     session = get_session(request)
@@ -146,9 +157,12 @@ def scooters(request: Request) -> JSONResponse:
     conn, cur = connect_db()
 
     if session:
-        user_id = cur.execute(
-            "SELECT id FROM users WHERE username = ?", (session["username"],)
-        ).fetchone()[0]
+        user_id = fetch_user_id(cur, session)
+
+        if not user_id:
+            return JSONResponse(
+                {"error": "Invalid session or user"}, status_code=401
+            )
 
     all_scooters = get_scooters()
     rows = cur.execute(
@@ -184,9 +198,13 @@ def book_scooter_route(request: Request, scooter_id: int) -> Response:
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
+
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
     conn.close()
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
 
@@ -222,9 +240,12 @@ def bookings_page(request: Request) -> Response:
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
     conn.close()
 
     bookings = get_user_active_bookings(user_id)
@@ -301,9 +322,12 @@ def history_page(request: Request) -> Response:
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
     conn.close()
 
     history = get_user_booking_history(user_id)
@@ -332,9 +356,12 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
     conn.close()
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
 

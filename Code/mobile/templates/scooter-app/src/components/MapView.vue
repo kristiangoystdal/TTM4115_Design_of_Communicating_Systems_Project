@@ -7,21 +7,28 @@
       <div id="loading-text">{{ loadingText }}</div>
     </div>
   </div>
+
+  <ScooterPopup v-if="selectedScooter" v-model:modelValue="showPopup" :scooter="selectedScooter" />
 </template>
 
 <script>
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import ScooterPopup from '@/components/ScooterPopup.vue'
 
 export default {
   name: 'MapView',
+  components: { ScooterPopup },
   data() {
     return {
-      session: {}, // You can bind this to an auth system
+      session: {},
       message: '',
       error: '',
       loadingText: 'Loading map...',
       map: null,
+      scooters: [],
+      selectedScooter: null,
+      showPopup: false,
     }
   },
   mounted() {
@@ -37,19 +44,21 @@ export default {
       }).addTo(this.map)
 
       try {
-        const scooterRes = await fetch('/scooters')
-        const scooters = await scooterRes.json()
+        const scooterRes = await fetch('/scooters', {
+          method: 'GET',
+          credentials: 'include', // 👈 this sends the session cookie
+        })
+        this.scooters = await scooterRes.json()
 
-        if (!scooters.length) {
+        if (!this.scooters.length) {
           this.loadingText = 'No scooters available.'
         }
 
-        scooters.forEach((scooter) => {
+        this.scooters.forEach((scooter) => {
           const scooterIcon = L.icon({
             iconUrl: '/assets/e_scooter_icon.png',
             iconSize: [40, 40],
             iconAnchor: [20, 40],
-            className: scooter.is_user_booked ? 'user-booked' : '',
           })
 
           const marker = L.marker([scooter.latitude, scooter.longitude], {
@@ -57,26 +66,10 @@ export default {
             opacity: scooter.is_user_booked ? 0.5 : 1.0,
           }).addTo(this.map)
 
-          const popupContent = `
-            ID: ${scooter.id}<br>
-            Battery: ${scooter.battery_level}%<br>
-            ${scooter.is_user_booked && !scooter.is_driving
-              ? '<p>This scooter is booked by you.</p>'
-              : `<form action="/book/${scooter.id}" method="POST">
-                    <button type="submit">Book</button>
-                  </form>`
-            }
-            <br>
-            ${scooter.is_driving
-              ? `<form action="/end_drive/${scooter.id}" method="POST">
-                    <button type="submit">End Drive</button>
-                  </form>`
-              : `<form action="/start_drive/${scooter.id}" method="POST">
-                    <button type="submit">Start Drive</button>
-                  </form>`
-            }
-          `
-          marker.bindPopup(popupContent)
+          marker.on('click', () => {
+            this.selectedScooter = scooter
+            this.showPopup = true
+          })
         })
 
         const stationRes = await fetch('/charging_stations')
@@ -103,6 +96,7 @@ export default {
 }
 </script>
 
+
 <style scoped>
 #map {
   height: 100vh;
@@ -116,21 +110,6 @@ export default {
   background: white;
   padding: 5px;
   z-index: 999;
-}
-
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  background-color: #333;
-  padding: 0.75rem 1.5rem;
-  color: white;
-}
-
-.navbar-menu a,
-.navbar-brand a {
-  color: white;
-  text-decoration: none;
-  margin: 0 1rem;
 }
 
 .notification {
