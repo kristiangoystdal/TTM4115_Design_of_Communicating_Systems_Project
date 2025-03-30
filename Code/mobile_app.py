@@ -36,6 +36,13 @@ from mobile.db_connector import (
 )
 from mobile.helpers import clean_username
 
+from pydantic import BaseModel
+
+
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
 
 app = FastAPI()
 app.mount(
@@ -91,23 +98,14 @@ def login_form(request: Request) -> Response:
 
 
 @app.post("/login")
-def login(
-    request: Request, username: str = Form(...), password: str = Form(...)
-) -> Response:
-    username = clean_username(username)
+def login(data: AuthRequest) -> Response:
+    username = clean_username(data.username)
 
-    if not check_user(username, password):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "Invalid credentials",
-            },
-        )
+    if not check_user(username, data.password):
+        return JSONResponse({"error": "Invalid credentials"}, status_code=401)
 
-    response = RedirectResponse(url="/", status_code=302)
     session = serializer.dumps({"username": username})
+    response = JSONResponse({"message": "Login successful"})
     response.set_cookie("session", session)
     return response
 
@@ -122,23 +120,16 @@ def register_form(request: Request) -> Response:
 
 
 @app.post("/register")
-def register(
-    request: Request, username: str = Form(...), password: str = Form(...)
-) -> Response:
-    username = clean_username(username)
+def register(data: AuthRequest) -> Response:
+    username = clean_username(data.username)
 
-    if not register_user(username, password):
-        return templates.TemplateResponse(
-            REGISTER_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "Username already exists",
-            },
+    if not register_user(username, data.password):
+        return JSONResponse(
+            {"error": "Username already exists"}, status_code=409
         )
 
-    response = RedirectResponse(url="/", status_code=302)
     session = serializer.dumps({"username": username})
+    response = JSONResponse({"message": "Registration successful"})
     response.set_cookie("session", session)
     return response
 
@@ -158,11 +149,6 @@ def scooters(request: Request) -> JSONResponse:
 
     if session:
         user_id = fetch_user_id(cur, session)
-
-        if not user_id:
-            return JSONResponse(
-                {"error": "Invalid session or user"}, status_code=401
-            )
 
     all_scooters = get_scooters()
     rows = cur.execute(

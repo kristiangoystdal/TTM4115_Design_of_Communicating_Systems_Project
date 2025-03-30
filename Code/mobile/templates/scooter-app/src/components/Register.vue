@@ -6,20 +6,10 @@
           <v-card-title class="text-h5 justify-center">Register</v-card-title>
           <v-card-text>
             <v-form @submit.prevent="handleRegister" ref="registerForm">
-              <v-text-field
-                label="Username"
-                v-model="form.username"
-                prepend-icon="mdi-account"
-                required
-              ></v-text-field>
+              <v-text-field label="Username" v-model="form.username" prepend-icon="mdi-account" required></v-text-field>
 
-              <v-text-field
-                label="Password"
-                v-model="form.password"
-                type="password"
-                prepend-icon="mdi-lock"
-                required
-              ></v-text-field>
+              <v-text-field label="Password" v-model="form.password" type="password" prepend-icon="mdi-lock"
+                required></v-text-field>
 
               <v-btn type="submit" color="primary" block class="mt-4">
                 Register
@@ -41,6 +31,10 @@
 </template>
 
 <script>
+import { toStatement } from '@babel/types'
+import { useToast } from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
+
 export default {
   name: 'RegisterForm',
   data() {
@@ -57,13 +51,26 @@ export default {
       try {
         const response = await fetch('/register', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(this.form)
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            username: this.form.username,
+            password: this.form.password
+          }),
         })
 
-        if (response.redirected) {
+
+        if (response.status === 401) {
+          this.error = 'You must be logged in to register.'
+          useToast().error(this.error)
+          this.$router.push('/login')
+          return
+        }
+        else if (response.ok) {
+          this.$router.push('/login')
+          useToast().success('Registration successful! Please log in.')
+        }
+        else if (response.redirected) {
           window.location.href = response.url
         } else {
           const data = await response.json()

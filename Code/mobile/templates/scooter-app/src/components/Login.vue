@@ -31,6 +31,10 @@
 </template>
 
 <script>
+
+import { useToast } from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
+
 export default {
   name: 'LoginForm',
   data() {
@@ -53,7 +57,10 @@ export default {
           body: JSON.stringify(this.form)
         })
 
-        if (response.redirected) {
+        if (response.ok) {
+          useToast().success('Login successful!')
+          this.$router.push('/')
+        } else if (response.redirected) {
           window.location.href = response.url
         } else {
           const data = await response.json()

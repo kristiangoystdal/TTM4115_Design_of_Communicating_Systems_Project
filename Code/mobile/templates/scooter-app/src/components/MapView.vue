@@ -44,10 +44,7 @@ export default {
       }).addTo(this.map)
 
       try {
-        const scooterRes = await fetch('/scooters', {
-          method: 'GET',
-          credentials: 'include', // 👈 this sends the session cookie
-        })
+        const scooterRes = await fetch('/scooters')
         this.scooters = await scooterRes.json()
 
         if (!this.scooters.length) {

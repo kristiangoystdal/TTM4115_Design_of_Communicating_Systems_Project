@@ -32,6 +32,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useToast } from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
+
+const toast = useToast()
 
 const props = defineProps({
   modelValue: Boolean,
@@ -44,4 +49,15 @@ const localOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 })
+
+const router = useRouter()
+
+const handleFetchResponse = async (response) => {
+  if (response.status === 401) {
+    toast.error('You must be logged in to view scooters.')
+    router.push('/login')
+    return null
+  }
+  return response.ok ? await response.json() : null
+}
 </script>
