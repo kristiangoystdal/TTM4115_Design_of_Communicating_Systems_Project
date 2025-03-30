@@ -174,42 +174,20 @@ def scooters(request: Request) -> JSONResponse:
 @app.post("/book/{scooter_id}")
 def book_scooter_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to book a scooter.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in."}, status_code=401
         )
 
     conn, cur = connect_db()
     user_id = fetch_user_id(cur, session)
-
-    if not user_id:
-        return JSONResponse(
-            {"error": "Invalid session or user"}, status_code=401
-        )
-
     conn.close()
+
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
 
     if book_scooter(user_id, scooter_id, booking_time):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": session,
-                "message": f"Scooter {scooter_id} booked successfully!",
-            },
-        )
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {
-            "request": request,
-            "session": session,
-            "error": "Scooter is already booked or unavailable.",
-        },
+        return JSONResponse({"success": True, "message": "Scooter booked"})
+    return JSONResponse(
+        {"error": "Scooter already booked or unavailable."}, status_code=400
     )
 
 
