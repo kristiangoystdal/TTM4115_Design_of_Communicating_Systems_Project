@@ -9,17 +9,13 @@
           This scooter is booked by you.
         </p>
 
-        <form v-else :action="`/book/${scooter.id}`" method="POST">
-          <v-btn type="submit" color="primary" block>Book</v-btn>
-        </form>
+        <v-btn v-else color="primary" block @click="bookScooter">
+          Book
+        </v-btn>
 
-        <form :action="scooter.is_driving
-          ? `/end_drive/${scooter.id}`
-          : `/start_drive/${scooter.id}`" method="POST">
-          <v-btn type="submit" color="secondary" block class="mt-2">
-            {{ scooter.is_driving ? 'End Drive' : 'Start Drive' }}
-          </v-btn>
-        </form>
+        <v-btn color="secondary" block class="mt-2" @click="toggleDrive">
+          {{ scooter.is_driving ? 'End Drive' : 'Start Drive' }}
+        </v-btn>
       </v-card-text>
 
       <v-card-actions>
@@ -54,10 +50,45 @@ const router = useRouter()
 
 const handleFetchResponse = async (response) => {
   if (response.status === 401) {
-    toast.error('You must be logged in to view scooters.')
+    toast.error('You must be logged in to perform this action.')
     router.push('/login')
     return null
   }
-  return response.ok ? await response.json() : null
+
+  try {
+    const json = await response.json()
+    return response.ok ? json : null
+  } catch (err) {
+    toast.error('Server returned an invalid response.')
+    return null
+  }
+}
+
+const bookScooter = async () => {
+  const response = await fetch(`/book/${props.scooter.id}`, {
+    method: 'POST',
+  })
+  const data = await handleFetchResponse(response)
+  if (data) {
+    // Update scooter state if needed
+    // props.scooter.is_user_booked = true
+    localOpen.value = false
+    // router.push('/')
+    toast.success('Scooter booked successfully!')
+  }
+}
+
+const toggleDrive = async () => {
+  const endpoint = props.scooter.is_driving
+    ? `/end_drive/${props.scooter.id}`
+    : `/start_drive/${props.scooter.id}`
+  const response = await fetch(endpoint, {
+    method: 'POST',
+  })
+  const data = await handleFetchResponse(response)
+  if (data) {
+    // Update scooter state if needed
+    props.scooter.is_driving = !props.scooter.is_driving
+  }
 }
 </script>

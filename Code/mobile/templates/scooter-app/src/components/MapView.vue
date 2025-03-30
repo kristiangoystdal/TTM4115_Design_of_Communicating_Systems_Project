@@ -1,4 +1,5 @@
 <template>
+  <div>{{ showPopup }}</div>
   <div>
     <div v-if="message" class="notification success">{{ message }}</div>
     <div v-if="error" class="notification error">{{ error }}</div>
@@ -15,6 +16,8 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import ScooterPopup from '@/components/ScooterPopup.vue'
+import { useToast } from 'vue-toastification'
+import 'vue-toastification/dist/index.css'
 
 export default {
   name: 'MapView',
@@ -33,41 +36,82 @@ export default {
   },
   mounted() {
     this.displayMap()
+    this.fetchScooters()
+  },
+  watch: {
+    showPopup(newValue) {
+      if (!newValue) {
+        this.displayMap()
+        this.clearScooters()
+        this.fetchScooters()
+      }
+    },
   },
   methods: {
     async displayMap() {
-      this.map = L.map('map').setView([63.422, 10.395], 14)
+      if (this.map) {
+        this.map.off(); // Remove all event listeners
+        this.map.remove(); // Remove the map instance
+      }
+
+      this.map = L.map('map').setView([63.422, 10.395], 14);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      }).addTo(this.map)
-
+      }).addTo(this.map);
+    },
+    async fetchScooters() {
       try {
         const scooterRes = await fetch('/scooters')
         this.scooters = await scooterRes.json()
 
+        const scooter_taken = this.scooters.some(
+          (scooter) => scooter.is_driving || scooter.is_user_booked
+        );
+
         if (!this.scooters.length) {
-          this.loadingText = 'No scooters available.'
+          useToast().error('No scooters available.')
+        } else if (scooter_taken) {
+          this.scooters.forEach((scooter) => {
+            if (scooter.is_driving || scooter.is_user_booked) {
+              const scooterIcon = L.icon({
+                iconUrl: '/assets/e_scooter_icon.png',
+                iconSize: [40, 40],
+                iconAnchor: [20, 40],
+              })
+
+              const marker = L.marker([scooter.latitude, scooter.longitude], {
+                icon: scooterIcon,
+                opacity: scooter.is_user_booked ? 0.5 : 1.0,
+              }).addTo(this.map)
+              scooter.marker = marker
+
+              marker.on('click', () => {
+                this.selectedScooter = scooter
+                this.showPopup = true
+              })
+            }
+          })
+        } else {
+          this.scooters.forEach((scooter) => {
+            const scooterIcon = L.icon({
+              iconUrl: '/assets/e_scooter_icon.png',
+              iconSize: [40, 40],
+              iconAnchor: [20, 40],
+            })
+
+            const marker = L.marker([scooter.latitude, scooter.longitude], {
+              icon: scooterIcon,
+              opacity: scooter.is_user_booked ? 0.5 : 1.0,
+            }).addTo(this.map)
+
+            marker.on('click', () => {
+              this.selectedScooter = scooter
+              this.showPopup = true
+            })
+          })
         }
-
-        this.scooters.forEach((scooter) => {
-          const scooterIcon = L.icon({
-            iconUrl: '/assets/e_scooter_icon.png',
-            iconSize: [40, 40],
-            iconAnchor: [20, 40],
-          })
-
-          const marker = L.marker([scooter.latitude, scooter.longitude], {
-            icon: scooterIcon,
-            opacity: scooter.is_user_booked ? 0.5 : 1.0,
-          }).addTo(this.map)
-
-          marker.on('click', () => {
-            this.selectedScooter = scooter
-            this.showPopup = true
-          })
-        })
 
         const stationRes = await fetch('/charging_stations')
         const stations = await stationRes.json()
@@ -88,6 +132,14 @@ export default {
         console.error('Map loading failed', err)
         this.error = 'Failed to load map data.'
       }
+    },
+    clearScooters() {
+      this.scooters.forEach((scooter) => {
+        if (scooter.marker) {
+          this.map.removeLayer(scooter.marker)
+        }
+      })
+      this.scooters = []
     },
   },
 }
