@@ -29,7 +29,12 @@ from mobile.db_connector import (
     get_user_active_bookings,
     get_user_booking_history,
     register_user,
+    end_booking,
+    start_drive,
+    end_drive,
+    nuke_db,
 )
+from mobile.helpers import clean_username
 
 
 app = FastAPI()
@@ -78,6 +83,8 @@ def login_form(request: Request) -> Response:
 def login(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
+    username = clean_username(username)
+
     if not check_user(username, password):
         return templates.TemplateResponse(
             LOGIN_HTML,
@@ -107,6 +114,8 @@ def register_form(request: Request) -> Response:
 def register(
     request: Request, username: str = Form(...), password: str = Form(...)
 ) -> Response:
+    username = clean_username(username)
+
     if not register_user(username, password):
         return templates.TemplateResponse(
             REGISTER_HTML,
@@ -140,7 +149,6 @@ def scooters(request: Request) -> JSONResponse:
         user_id = cur.execute(
             "SELECT id FROM users WHERE username = ?", (session["username"],)
         ).fetchone()[0]
-        conn.close()
 
     all_scooters = get_scooters()
     rows = cur.execute(
@@ -311,7 +319,100 @@ def charging_stations() -> JSONResponse:
     return JSONResponse(content=stations_data)
 
 
+@app.post("/start_drive/{scooter_id}")
+def start_drive_route(request: Request, scooter_id: int) -> Response:
+    if not (session := get_session(request)):
+        return templates.TemplateResponse(
+            LOGIN_HTML,
+            {
+                "request": request,
+                "session": {},
+                "error": "You must be logged in to start a drive.",
+            },
+        )
+
+    conn, cur = connect_db()
+    user_id = cur.execute(
+        "SELECT id FROM users WHERE username = ?", (session["username"],)
+    ).fetchone()[0]
+    conn.close()
+    booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
+
+    if start_drive(user_id, scooter_id, booking_time):
+        return templates.TemplateResponse(
+            INDEX_HTML,
+            {
+                "request": request,
+                "session": session,
+                "message": f"Scooter {scooter_id} started successfully!",
+            },
+        )
+    return templates.TemplateResponse(
+        INDEX_HTML,
+        {
+            "request": request,
+            "session": session,
+            "error": "Scooter is already started or unavailable.",
+        },
+    )
+
+
+@app.post("/end_drive/{scooter_id}")
+def end_drive_route(request: Request, scooter_id: int) -> Response:
+    if not (session := get_session(request)):
+        return templates.TemplateResponse(
+            LOGIN_HTML,
+            {
+                "request": request,
+                "session": {},
+                "error": "You must be logged in to end a drive.",
+            },
+        )
+
+    end_time = datetime.now(TIMEZONE).isoformat()
+    price = end_drive(scooter_id, end_time)
+
+    conn, cur = connect_db()
+    drive = cur.execute(
+        """
+        SELECT d.id, d.driving_time, d.end_time, s.latitude, s.longitude
+        FROM drives AS d
+        JOIN scooters AS s ON d.scooter_id = s.id
+        WHERE d.scooter_id = ?
+        """,
+        (scooter_id,),
+    ).fetchone()
+    conn.close()
+
+    if not drive:
+        return JSONResponse(
+            content={"error": "Failed to end drive"}, status_code=400
+        )
+
+    driving_time = datetime.fromisoformat(drive[1]).astimezone(TIMEZONE)
+    end_time_date = datetime.fromisoformat(drive[2]).astimezone(TIMEZONE)
+    minutes = (end_time_date - driving_time).total_seconds() / 60
+
+    drive_details = {
+        "id": drive[0],
+        "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": round(minutes),
+        "price": round(price, 2),
+    }
+
+    return templates.TemplateResponse(
+        RECEIPT_HTML,
+        {
+            "request": request,
+            "session": session,
+            "booking": drive_details,
+        },
+    )
+
+
 def main() -> None:
+    nuke_db()
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)

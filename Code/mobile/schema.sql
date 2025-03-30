@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS scooters (
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     battery_level INTEGER NOT NULL,
-    is_booked INTEGER DEFAULT 0
+    is_booked INTEGER DEFAULT 0,
+    is_driving INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS charging_stations (
@@ -35,3 +36,21 @@ CREATE TABLE IF NOT EXISTS bookings (
             ON DELETE NO ACTION
             ON UPDATE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS drives (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    scooter_id INTEGER NOT NULL,
+    driving_time TEXT NOT NULL,
+    end_time TEXT,
+    is_active INTEGER DEFAULT 1,
+    FOREIGN KEY (user_id)
+        REFERENCES users (id)
+            ON DELETE NO ACTION
+            ON UPDATE CASCADE,
+    FOREIGN KEY (scooter_id)
+        REFERENCES scooters (id)
+            ON DELETE NO ACTION
+            ON UPDATE CASCADE
+);
+
