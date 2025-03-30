@@ -75,7 +75,7 @@ def login_form(request: Request) -> Response:
     if session := get_session(request):
         return RedirectResponse(url="/")
     return templates.TemplateResponse(
-        LOGIN_HTML, {"request": request, "session": session}
+        INDEX_HTML, {"request": request, "session": session}
     )
 
 
@@ -87,7 +87,7 @@ def login(
 
     if not check_user(username, password):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -106,7 +106,7 @@ def register_form(request: Request) -> Response:
     if session := get_session(request):
         return RedirectResponse(url="/")
     return templates.TemplateResponse(
-        REGISTER_HTML, {"request": request, "session": session}
+        INDEX_HTML, {"request": request, "session": session}
     )
 
 
@@ -213,7 +213,7 @@ def book_scooter_route(request: Request, scooter_id: int) -> Response:
 def bookings_page(request: Request) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -229,7 +229,7 @@ def bookings_page(request: Request) -> Response:
 
     bookings = get_user_active_bookings(user_id)
     return templates.TemplateResponse(
-        BOOKINGS_HTML,
+        INDEX_HTML,
         {"request": request, "session": session, "bookings": bookings},
     )
 
@@ -238,7 +238,7 @@ def bookings_page(request: Request) -> Response:
 def end_booking_route(request: Request, booking_id: int) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -279,7 +279,7 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
     }
 
     return templates.TemplateResponse(
-        RECEIPT_HTML,
+        INDEX_HTML,
         {
             "request": request,
             "session": session,
@@ -292,7 +292,7 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
 def history_page(request: Request) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -308,7 +308,7 @@ def history_page(request: Request) -> Response:
 
     history = get_user_booking_history(user_id)
     return templates.TemplateResponse(
-        HISTORY_HTML,
+        INDEX_HTML,
         {"request": request, "session": session, "history": history},
     )
 
@@ -323,7 +323,7 @@ def charging_stations() -> JSONResponse:
 def start_drive_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -361,7 +361,7 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
 def end_drive_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -402,7 +402,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
     }
 
     return templates.TemplateResponse(
-        RECEIPT_HTML,
+        INDEX_HTML,
         {
             "request": request,
             "session": session,
