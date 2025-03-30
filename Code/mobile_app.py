@@ -33,9 +33,21 @@ from mobile.db_connector import (
 
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="mobile/static"), name="static")
+app.mount(
+    "/assets",
+    StaticFiles(directory="mobile/templates/dist_vue/assets"),
+    name="assets",
+)
 
-templates = Jinja2Templates(directory="mobile/templates")
+
+app.mount(
+    "/favicon.ico",
+    StaticFiles(directory="mobile/templates/dist_vue"),
+    name="favicon",
+)
+
+
+templates = Jinja2Templates(directory="mobile/templates/dist_vue")
 serializer = URLSafeSerializer(SECRET_KEY)
 
 
