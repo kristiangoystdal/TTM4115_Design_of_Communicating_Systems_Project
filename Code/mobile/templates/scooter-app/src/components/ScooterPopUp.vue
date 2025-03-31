@@ -9,11 +9,12 @@
           This scooter is booked by you.
         </p>
 
-        <v-btn color="secondary" block class="mt-2" @click="scooter.is_user_booked ? cancelScooter() : bookScooter()">
+        <v-btn v-if="!scooter.is_driving" :disabled="loading" color="secondary" block class="mt-2"
+          @click="scooter.is_user_booked ? cancelScooter() : bookScooter()">
           {{ scooter.is_user_booked ? 'Cancel Reservation' : 'Reserve Scooter' }}
         </v-btn>
 
-        <v-btn color="primary" block class="mt-2" @click="toggleDrive">
+        <v-btn :disabled="loading" color="primary" block class="mt-2" @click="toggleDrive">
           {{ scooter.is_driving ? 'End Drive' : 'Start Drive' }}
         </v-btn>
       </v-card-text>
@@ -27,7 +28,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
@@ -47,11 +48,30 @@ const localOpen = computed({
 })
 
 const router = useRouter()
+const loading = ref(false)
 
 const handleFetchResponse = async (response) => {
-  if (!response.ok) {
+  if (response.status === 401) {
     toast.error('You must be logged in to perform this action.')
     router.push('/login')
+    return null
+  } else if (response.status === 403) {
+    toast.error('You do not have permission to perform this action.')
+    return null
+  } else if (response.status === 404) {
+    toast.error('Scooter not found.')
+    return null
+  } else if (response.status === 500) {
+    toast.error('Server error. Please try again later.')
+    return null
+  } else if (response.status === 503) {
+    toast.error('Service unavailable. Please try again later.')
+    return null
+  } else if (response.status === 429) {
+    toast.error('Too many requests. Please try again later.')
+    return null
+  } else if (response.status === 400) {
+    toast.error('Bad request. Please check your input.')
     return null
   }
 
@@ -65,30 +85,33 @@ const handleFetchResponse = async (response) => {
 }
 
 const bookScooter = async () => {
+  loading.value = true
   const response = await fetch(`/book/${props.scooter.id}`, {
     method: 'POST',
   })
   const data = await handleFetchResponse(response)
   if (data) {
-    // Update scooter state if needed
     localOpen.value = false
     toast.success('Scooter booked successfully!')
   }
+  loading.value = false
 }
 
 const cancelScooter = async () => {
+  loading.value = true
   const response = await fetch(`/end_booking/${props.scooter.id}`, {
     method: 'POST',
   })
   const data = await handleFetchResponse(response)
   if (data) {
-    // Update scooter state if needed
     localOpen.value = false
     toast.success('Reservation canceled successfully!')
   }
+  loading.value = false
 }
 
 const toggleDrive = async () => {
+  loading.value = true
   const endpoint = props.scooter.is_driving
     ? `/end_drive/${props.scooter.id}`
     : `/start_drive/${props.scooter.id}`
@@ -97,7 +120,6 @@ const toggleDrive = async () => {
   })
   const data = await handleFetchResponse(response)
   if (data) {
-    // Update scooter state if needed
     localOpen.value = false
     toast.success(
       props.scooter.is_driving ? 'Drive ended successfully!' : 'Drive started successfully!'
@@ -105,8 +127,8 @@ const toggleDrive = async () => {
     if (props.scooter.is_driving) {
       emit('drive-data', data)
       console.log(data)
-
     }
   }
+  loading.value = false
 }
 </script>
