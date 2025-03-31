@@ -9,11 +9,7 @@
       </v-alert>
 
       <v-list v-else>
-        <v-list-item
-          v-for="booking in history"
-          :key="booking.id"
-          class="mb-4"
-        >
+        <v-list-item v-for="booking in history" :key="booking.id" class="mb-4">
           <v-card outlined>
             <v-card-text>
               <p><strong>Scooter ID:</strong> {{ booking.id }}</p>
@@ -46,6 +42,10 @@ export default {
       try {
         const response = await fetch('/history')
         const data = await response.json()
+        console.log('Booking history:', data)
+        if (!response.ok) {
+          throw new Error(data.message || 'Failed to fetch booking history')
+        }
         this.history = data.history || []
       } catch (err) {
         console.error('Failed to load booking history:', err)
