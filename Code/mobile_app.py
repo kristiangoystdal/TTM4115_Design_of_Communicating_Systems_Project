@@ -1,11 +1,11 @@
 from datetime import datetime
 
 import uvicorn
-from fastapi import FastAPI, Form, Request, Response
+from fastapi import FastAPI, Form, Request, Response, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import URLSafeSerializer
+from itsdangerous import URLSafeSerializer, BadSignature
 from mobile.constants import (
     BOOKINGS_HTML,
     HISTORY_HTML,
@@ -141,6 +141,18 @@ def logout() -> RedirectResponse:
     return response
 
 
+def get_me(request: Request):
+    session_cookie = request.cookies.get("session")
+    if not session_cookie:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    try:
+        session_data = serializer.loads(session_cookie)
+        return {"username": session_data["username"]}
+    except BadSignature:
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+
 @app.get("/scooters", response_model=list[dict[str, float | int | str]])
 def scooters(request: Request) -> JSONResponse:
     session = get_session(request)
@@ -222,13 +234,9 @@ def bookings_page(request: Request) -> Response:
 @app.post("/end_booking/{booking_id}")
 def end_booking_route(request: Request, booking_id: int) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to end a booking.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in to end a booking."},
+            status_code=401,
         )
 
     end_time = datetime.now(TIMEZONE).isoformat()
@@ -263,26 +271,15 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
         "price": round(price, 2),
     }
 
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {
-            "request": request,
-            "session": session,
-            "booking": booking_details,
-        },
-    )
+    return JSONResponse(content={"success": True, "booking": booking_details})
 
 
 @app.get("/history")
 def history_page(request: Request) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to view your booking history.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in to view your booking history."},
+            status_code=401,
         )
 
     conn, cur = connect_db()
@@ -295,10 +292,7 @@ def history_page(request: Request) -> Response:
     conn.close()
 
     history = get_user_booking_history(user_id)
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {"request": request, "session": session, "history": history},
-    )
+    return JSONResponse(content={"success": True, "history": history})
 
 
 @app.get("/charging_stations", response_model=list[dict[str, float]])
@@ -310,13 +304,9 @@ def charging_stations() -> JSONResponse:
 @app.post("/start_drive/{scooter_id}")
 def start_drive_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to start a drive.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in to start a drive."},
+            status_code=401,
         )
 
     conn, cur = connect_db()
@@ -330,34 +320,20 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
 
     if start_drive(user_id, scooter_id, booking_time):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": session,
-                "message": f"Scooter {scooter_id} started successfully!",
-            },
+        return JSONResponse(
+            {"success": True, "message": "Scooter started successfully"}
         )
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {
-            "request": request,
-            "session": session,
-            "error": "Scooter is already started or unavailable.",
-        },
+    return JSONResponse(
+        {"error": "Scooter already booked or unavailable."}, status_code=400
     )
 
 
 @app.post("/end_drive/{scooter_id}")
 def end_drive_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to end a drive.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in to end a drive."},
+            status_code=401,
         )
 
     end_time = datetime.now(TIMEZONE).isoformat()
@@ -392,14 +368,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         "price": round(price, 2),
     }
 
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {
-            "request": request,
-            "session": session,
-            "booking": drive_details,
-        },
-    )
+    return JSONResponse(content={"success": True, "drive": drive_details})
 
 
 def main() -> None:

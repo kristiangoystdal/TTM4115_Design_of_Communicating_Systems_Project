@@ -71,9 +71,7 @@ const bookScooter = async () => {
   const data = await handleFetchResponse(response)
   if (data) {
     // Update scooter state if needed
-    // props.scooter.is_user_booked = true
     localOpen.value = false
-    // router.push('/')
     toast.success('Scooter booked successfully!')
   }
 }
@@ -88,7 +86,15 @@ const toggleDrive = async () => {
   const data = await handleFetchResponse(response)
   if (data) {
     // Update scooter state if needed
-    props.scooter.is_driving = !props.scooter.is_driving
+    localOpen.value = false
+    toast.success(
+      props.scooter.is_driving ? 'Drive ended successfully!' : 'Drive started successfully!'
+    )
+    if (props.scooter.is_driving) {
+      emit('drive-data', data)
+      console.log(data)
+
+    }
   }
 }
 </script>

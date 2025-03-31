@@ -23,10 +23,15 @@ import router from './router'
 import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 
+import { createPinia } from 'pinia'
+const pinia = createPinia()
+
+
 const app = createApp(App)
 
 registerPlugins(app)
 app.use(router)
 app.use(Toast)
+app.use(pinia)
 
 app.mount('#app')

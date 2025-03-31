@@ -1,22 +1,50 @@
 <template>
-  <nav class="bottom-navbar">
-    <router-link to="/">Home</router-link>
-    <template v-if="username">
-      <router-link to="/bookings">Bookings</router-link>
-      <router-link to="/logout">Logout</router-link>
+  <v-bottom-navigation app color="primary" grow height="56" class="bottom-navbar">
+    <v-btn to="/" icon>
+      <v-icon>mdi-home</v-icon>
+    </v-btn>
+
+    <template v-if="user?.username">
+      <v-btn to="/bookings" icon>
+        <v-icon>mdi-calendar-check</v-icon>
+      </v-btn>
+      <v-btn icon @click="logout">
+        <v-icon>mdi-logout</v-icon>
+      </v-btn>
     </template>
+
     <template v-else>
-      <router-link to="/login">Login</router-link>
-      <router-link to="/register">Register</router-link>
+      <v-btn to="/login" icon>
+        <v-icon>mdi-login</v-icon>
+      </v-btn>
+      <v-btn to="/register" icon>
+        <v-icon>mdi-account-plus</v-icon>
+      </v-btn>
     </template>
-  </nav>
+  </v-bottom-navigation>
 </template>
 
 <script>
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
+
 export default {
   name: 'BottomNavbar',
-  props: {
-    username: String
+  setup() {
+    const auth = useAuthStore()
+    const { user } = storeToRefs(auth)
+
+    const logout = async () => {
+      try {
+        await auth.logout() // Assuming the `logout` method is defined in the auth store
+        
+        console.log('Logged out successfully')
+      } catch (error) {
+        console.error('Error during logout:', error)
+      }
+    }
+
+    return { user, logout }
   }
 }
 </script>
@@ -26,16 +54,6 @@ export default {
   position: fixed;
   bottom: 0;
   width: 100%;
-  background-color: #2c3e50;
-  color: white;
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0;
   z-index: 1001;
-}
-
-.bottom-navbar a {
-  color: white;
-  text-decoration: none;
 }
 </style>

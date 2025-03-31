@@ -6,14 +6,10 @@
           <v-card-title class="text-h5 justify-center">Login</v-card-title>
           <v-card-text>
             <v-form @submit.prevent="handleLogin" ref="loginForm">
-              <v-text-field label="Username" v-model="form.username" prepend-icon="mdi-account" required></v-text-field>
+              <v-text-field label="Username" v-model="form.username" prepend-icon="mdi-account" required />
+              <v-text-field label="Password" v-model="form.password" type="password" prepend-icon="mdi-lock" required />
 
-              <v-text-field label="Password" v-model="form.password" type="password" prepend-icon="mdi-lock"
-                required></v-text-field>
-
-              <v-btn type="submit" color="primary" block class="mt-4">
-                Login
-              </v-btn>
+              <v-btn type="submit" color="primary" block class="mt-4">Login</v-btn>
 
               <v-alert v-if="error" type="error" dense class="mt-3">
                 {{ error }}
@@ -31,9 +27,9 @@
 </template>
 
 <script>
-
 import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
   name: 'LoginForm',
@@ -54,19 +50,19 @@ export default {
           headers: {
             'Content-Type': 'application/json'
           },
+          credentials: 'include', // 🔥 important: include cookie!
           body: JSON.stringify(this.form)
         })
 
+        const data = await response.json()
+
         if (response.ok) {
+          const auth = useAuthStore()
+          auth.login({ username: this.form.username })
           useToast().success('Login successful!')
           this.$router.push('/')
-        } else if (response.redirected) {
-          window.location.href = response.url
         } else {
-          const data = await response.json()
-          if (data.error) {
-            this.error = data.error
-          }
+          this.error = data.error || 'Login failed.'
         }
       } catch (err) {
         this.error = 'Something went wrong during login.'

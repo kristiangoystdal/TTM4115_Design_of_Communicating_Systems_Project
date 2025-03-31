@@ -1,5 +1,4 @@
 <template>
-  <div>{{ showPopup }}</div>
   <div>
     <div v-if="message" class="notification success">{{ message }}</div>
     <div v-if="error" class="notification error">{{ error }}</div>
@@ -9,7 +8,10 @@
     </div>
   </div>
 
-  <ScooterPopup v-if="selectedScooter" v-model:modelValue="showPopup" :scooter="selectedScooter" />
+  <ScooterPopup v-if="selectedScooter" v-model:modelValue="showPopup" :scooter="selectedScooter"
+    @update:scooter="handleScooterUpdate" @drive-data="handleDriveData" />
+
+  <ReceiptOverlay :show="showReceipt" :driveData="receiptData" @update:show="showReceipt = $event" />
 </template>
 
 <script>
@@ -18,10 +20,11 @@ import 'leaflet/dist/leaflet.css'
 import ScooterPopup from '@/components/ScooterPopup.vue'
 import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+import ReceiptOverlay from './ReceiptOverlay.vue'
 
 export default {
   name: 'MapView',
-  components: { ScooterPopup },
+  components: { ScooterPopup, ReceiptOverlay },
   data() {
     return {
       session: {},
@@ -32,6 +35,8 @@ export default {
       scooters: [],
       selectedScooter: null,
       showPopup: false,
+      showReceipt: false,
+      receiptData: null,
     }
   },
   mounted() {
@@ -141,6 +146,14 @@ export default {
       })
       this.scooters = []
     },
+    handleDriveData(data) {
+      if (data) {
+        console.log("Drive data received:", data)
+        this.showReceipt = true;
+        this.receiptData = data;
+      }
+    }
+
   },
 }
 </script>
@@ -148,7 +161,7 @@ export default {
 
 <style scoped>
 #map {
-  height: 100vh;
+  height: 90vh;
   width: 100%;
 }
 

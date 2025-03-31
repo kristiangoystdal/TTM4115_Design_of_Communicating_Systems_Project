@@ -67,8 +67,10 @@ export default {
           return
         }
         else if (response.ok) {
-          this.$router.push('/login')
-          useToast().success('Registration successful! Please log in.')
+          const auth = useAuthStore()
+          auth.login({ username: this.form.username })
+          this.$router.push('/')
+          useToast().success('Registration successful! ')
         }
         else if (response.redirected) {
           window.location.href = response.url
