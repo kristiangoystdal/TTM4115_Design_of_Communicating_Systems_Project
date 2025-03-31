@@ -44,7 +44,7 @@ const routes: Array<RouteRecordRaw> = [
     component: ActiveBookings,
   },
   {
-    path: '/booking-history',
+    path: '/bookings',
     name: 'BookingHistory',
     component: BookingHistory,
   }
