@@ -34,6 +34,7 @@
 import { toStatement } from '@babel/types'
 import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
   name: 'RegisterForm',
