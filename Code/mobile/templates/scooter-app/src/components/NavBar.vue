@@ -27,18 +27,20 @@
 <script>
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 
 export default {
   name: 'BottomNavbar',
   setup() {
     const auth = useAuthStore()
     const { user } = storeToRefs(auth)
+    const router = useRouter() // ✅ flytt denne ut hit
 
     const logout = async () => {
       try {
-        await auth.logout() // Assuming the `logout` method is defined in the auth store
-        
+        await auth.logout()
         console.log('Logged out successfully')
+        router.push('/login') // ✅ nå funker det
       } catch (error) {
         console.error('Error during logout:', error)
       }
@@ -47,6 +49,7 @@ export default {
     return { user, logout }
   }
 }
+
 </script>
 
 <style scoped>
