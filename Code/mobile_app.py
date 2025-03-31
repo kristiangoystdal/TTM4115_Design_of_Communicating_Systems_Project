@@ -134,7 +134,7 @@ def register(data: AuthRequest) -> Response:
     return response
 
 
-@app.get("/logout")
+@app.post("/logout")
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie("session")
@@ -248,7 +248,7 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
         SELECT b.id, b.booking_time, b.end_time, s.latitude, s.longitude
         FROM bookings AS b
         JOIN scooters AS s ON b.scooter_id = s.id
-        WHERE b.id = ?
+        WHERE b.scooter_id = ?
         """,
         (booking_id,),
     ).fetchone()
@@ -259,8 +259,9 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
             content={"error": "Failed to end booking"}, status_code=400
         )
 
-    booking_time = datetime.fromisoformat(booking[1]).astimezone(TIMEZONE)
-    end_time_date = datetime.fromisoformat(booking[2]).astimezone(TIMEZONE)
+    booking_time = booking[1].astimezone(TIMEZONE)
+    end_time_date = booking[2].astimezone(TIMEZONE)
+
     minutes = (end_time_date - booking_time).total_seconds() / 60
 
     booking_details = {
