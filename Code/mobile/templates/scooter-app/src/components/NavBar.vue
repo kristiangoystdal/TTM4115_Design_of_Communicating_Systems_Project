@@ -34,13 +34,13 @@ export default {
   setup() {
     const auth = useAuthStore()
     const { user } = storeToRefs(auth)
-    const router = useRouter() // ✅ flytt denne ut hit
+    const router = useRouter()
 
     const logout = async () => {
       try {
         await auth.logout()
         console.log('Logged out successfully')
-        router.push('/login') // ✅ nå funker det
+        router.push('/login')
       } catch (error) {
         console.error('Error during logout:', error)
       }
