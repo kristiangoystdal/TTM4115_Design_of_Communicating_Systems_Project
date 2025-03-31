@@ -164,21 +164,24 @@ def book_scooter(user_id: int, scooter_id: int, booking_time: str) -> bool:
 
 def end_booking(booking_id: int, end_time: str) -> float:
     conn, cur = connect_db()
+
+    # Oppdater booking
     cur.execute(
         """
         UPDATE bookings
         SET end_time = ?, is_active = 0
-        WHERE id = ? AND end_time IS NULL
+        WHERE scooter_id = ? AND end_time IS NULL
         """,
         (end_time, booking_id),
     )
     conn.commit()
 
+    # Hent bookingen igjen
     row = cur.execute(
         """
         SELECT scooter_id, booking_time, end_time
         FROM bookings
-        WHERE id = ?
+        WHERE scooter_id = ?
         """,
         (booking_id,),
     ).fetchone()
@@ -187,7 +190,14 @@ def end_booking(booking_id: int, end_time: str) -> float:
         conn.close()
         return 0.0
 
-    scooter_id, booking_time, end_time = row
+    scooter_id, booking_time, actual_end_time = row
+
+    # Ny: sjekk at `actual_end_time` og `booking_time` faktisk finnes
+    if not actual_end_time or not booking_time:
+        conn.close()
+        return 0.0
+
+    # Oppdater scooter-status
     cur.execute(
         """
         UPDATE scooters
@@ -199,9 +209,20 @@ def end_booking(booking_id: int, end_time: str) -> float:
     conn.commit()
     conn.close()
 
-    booking_time = datetime.fromisoformat(booking_time).astimezone(TIMEZONE)
-    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
-    minutes = (end_time_date - booking_time).total_seconds() / 60
+    # Trygg parsing
+    booking_time_dt = (
+        datetime.fromisoformat(booking_time)
+        if isinstance(booking_time, str)
+        else booking_time
+    ).astimezone(TIMEZONE)
+
+    end_time_dt = (
+        datetime.fromisoformat(actual_end_time)
+        if isinstance(actual_end_time, str)
+        else actual_end_time
+    ).astimezone(TIMEZONE)
+
+    minutes = (end_time_dt - booking_time_dt).total_seconds() / 60
     return get_price(minutes)
 
 
@@ -342,6 +363,9 @@ def get_charging_stations() -> list[dict[str, float]]:
 
 
 def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
+    # End any existing booking before starting a drive
+    end_booking(scooter_id, start_time)
+
     conn, cur = connect_db()
     existing_booking = cur.execute(
         """
@@ -423,7 +447,7 @@ def end_drive(scooter_id: int, end_time: str) -> float:
     cur.execute(
         """
         UPDATE scooters
-        SET is_driving = 0
+        SET is_driving = 0, is_booked = 0
         WHERE id = ?
         """,
         (scooter_id_from_drive,),
