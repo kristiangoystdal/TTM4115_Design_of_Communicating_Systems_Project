@@ -4,16 +4,16 @@
       <v-card-title>Scooter {{ scooter.id }}</v-card-title>
       <v-card-text>
         <p>Battery: {{ scooter.battery_level }}%</p>
-
+        <br>
         <p v-if="scooter.is_user_booked && !scooter.is_driving">
           This scooter is booked by you.
         </p>
 
-        <v-btn v-else color="primary" block @click="bookScooter">
-          Book
+        <v-btn color="secondary" block class="mt-2" @click="scooter.is_user_booked ? cancelScooter() : bookScooter()">
+          {{ scooter.is_user_booked ? 'Cancel Reservation' : 'Reserve Scooter' }}
         </v-btn>
 
-        <v-btn color="secondary" block class="mt-2" @click="toggleDrive">
+        <v-btn color="primary" block class="mt-2" @click="toggleDrive">
           {{ scooter.is_driving ? 'End Drive' : 'Start Drive' }}
         </v-btn>
       </v-card-text>
@@ -49,7 +49,7 @@ const localOpen = computed({
 const router = useRouter()
 
 const handleFetchResponse = async (response) => {
-  if (response.status === 401) {
+  if (!response.ok) {
     toast.error('You must be logged in to perform this action.')
     router.push('/login')
     return null
@@ -73,6 +73,18 @@ const bookScooter = async () => {
     // Update scooter state if needed
     localOpen.value = false
     toast.success('Scooter booked successfully!')
+  }
+}
+
+const cancelScooter = async () => {
+  const response = await fetch(`/end_booking/${props.scooter.id}`, {
+    method: 'POST',
+  })
+  const data = await handleFetchResponse(response)
+  if (data) {
+    // Update scooter state if needed
+    localOpen.value = false
+    toast.success('Reservation canceled successfully!')
   }
 }
 
