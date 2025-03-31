@@ -80,12 +80,16 @@ def fetch_user_id(cur, session):
     return row[0] if row else None
 
 
+def to_datetime(value):
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    return value
+
+
 @app.get("/")
 def read_root(request: Request) -> Response:
-    session = get_session(request)
-    return templates.TemplateResponse(
-        INDEX_HTML, {"request": request, "session": session}
-    )
+    print("📥 Request to /")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/login")
@@ -259,8 +263,8 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
             content={"error": "Failed to end booking"}, status_code=400
         )
 
-    booking_time = booking[1].astimezone(TIMEZONE)
-    end_time_date = booking[2].astimezone(TIMEZONE)
+    booking_time = to_datetime(booking[1]).astimezone(TIMEZONE)
+    end_time_date = to_datetime(booking[2]).astimezone(TIMEZONE)
 
     minutes = (end_time_date - booking_time).total_seconds() / 60
 
