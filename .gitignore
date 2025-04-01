@@ -6,3 +6,5 @@
 **/venv/*
 
 **/database.db
+
+**/dist_vue/*
