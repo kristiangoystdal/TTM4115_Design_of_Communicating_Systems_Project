@@ -12,10 +12,9 @@ python_version = "3.11"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_defs = true
-ignore_missing_imports = true
+ignore_missing_imports = false
 implicit_optional = false
-strict_equality = true
-strict_optional = true
+strict = true
 warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_configs = true
@@ -26,3 +25,7 @@ enable_error_code = [
     "possibly-undefined",
     "truthy-bool",
 ]
+
+[[tool.mypy.overrides]]
+module = ["stmpy.*"]
+ignore_missing_imports = true
