@@ -2,26 +2,26 @@
   <v-container class="py-8">
     <v-card elevation="2" class="pa-4">
       <v-card-title class="text-h5">Your Booking History</v-card-title>
-      <v-divider></v-divider>
+      <v-divider class="my-4"></v-divider>
 
       <v-alert v-if="!history.length" type="info" class="my-4">
         You have no past bookings.
       </v-alert>
 
-      <v-list v-else>
-        <v-list-item v-for="booking in history" :key="booking.id" class="mb-4">
-          <v-card outlined>
-            <v-card-text>
-              <p><strong>Scooter ID:</strong> {{ booking.id }}</p>
-              <p><strong>Location:</strong> ({{ booking.latitude }}, {{ booking.longitude }})</p>
-              <p><strong>Battery:</strong> {{ booking.battery_level }}%</p>
-              <p><strong>Booked At:</strong> {{ booking.booking_time }}</p>
-              <p><strong>Ended At:</strong> {{ booking.end_time }}</p>
-              <p><strong>Price:</strong> {{ booking.price }} NOK</p>
-            </v-card-text>
-          </v-card>
-        </v-list-item>
-      </v-list>
+      <v-expansion-panels v-else v-model="expandedPanels">
+        <v-expansion-panel v-for="(booking, index) in history" :key="booking.id">
+          <v-expansion-panel-title>
+            <strong>Scooter ID: </strong> {{ booking.id }}
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <p><strong>Location: </strong> ({{ booking.latitude }}, {{ booking.longitude }})</p>
+            <p><strong>Battery: </strong> {{ booking.battery_level }}%</p>
+            <p><strong>Duration: </strong> {{ findDuration(booking.booking_time, booking.end_time) }}</p>
+            <p><strong>Price: </strong> {{ booking.price }} NOK</p>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+      <v-divider class="my-4"></v-divider>
     </v-card>
   </v-container>
 </template>
@@ -31,7 +31,8 @@ export default {
   name: 'BookingHistory',
   data() {
     return {
-      history: [] // Fetched on mount
+      history: [],
+      expandedPanels: []
     }
   },
   async mounted() {
@@ -50,7 +51,18 @@ export default {
       } catch (err) {
         console.error('Failed to load booking history:', err)
       }
+    },
+    findDuration(start_time, end_time) {
+      const start = new Date(start_time)
+      const end = new Date(end_time)
+      const duration = Math.abs(end - start) / 1000 // in seconds
+      const hours = Math.floor(duration / 3600)
+      const minutes = Math.floor((duration % 3600) / 60)
+      const seconds = Math.floor(duration % 60)
+      const formattedDuration = `${hours}h ${minutes}m ${seconds}s`
+      return formattedDuration
     }
-  }
+  },
+
 }
 </script>
