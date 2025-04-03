@@ -99,8 +99,6 @@ def main() -> None:
 
     print("[DEBUG] scooter.lights_reserved() is:", scooter.lights_reserved)
 
-    print("[DEBUG] Calling lights_reserved manually:")
-    scooter.lights_reserved()  # ✅ This should print something
 
 
 if __name__ == "__main__":
