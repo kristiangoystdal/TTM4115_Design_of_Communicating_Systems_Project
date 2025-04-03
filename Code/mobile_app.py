@@ -383,7 +383,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
     minutes = (end_time - driving_time).total_seconds() / 60
 
     drive_details = {
-        "id": drive[0],
+        "scooter_id": drive[0],
         "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": round(minutes),
