@@ -10,7 +10,11 @@ from scooter.color import Color
 
 
 sense = SenseHat()
-sense.set_imu_config(True, True, True)
+try:
+    sense.set_imu_config(True, True, True)
+except OSError:
+    print("⚠️ IMU init failed – continuing without IMU (dev mode)")
+
 
 
 def get_acceleration() -> tuple[float, float, float]:
