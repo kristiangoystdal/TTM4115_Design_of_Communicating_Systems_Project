@@ -7,7 +7,7 @@ from scooter.helpers import IdCounter
 
 
 @dataclass(slots=True)
-class Scooter:
+class ScooterLogic:
     scooter_id: int = field(default_factory=IdCounter.next, init=False)
     mqtt_client: Client = field(default=None, init=False)  # type: ignore
     stm: Machine = field(default=None, init=False)

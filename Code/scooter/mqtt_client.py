@@ -11,7 +11,7 @@ from stmpy import Driver
 @dataclass(slots=True)
 class MqttClient:
     client = Client()
-    stm_driver: Driver = field(default=None, init=False)
+    stm_driver: Driver = field(default=None)
 
     def __post_init__(self) -> None:
         self.client.on_connect = self.on_connect

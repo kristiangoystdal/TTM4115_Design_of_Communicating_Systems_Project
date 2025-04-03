@@ -2,11 +2,11 @@ from stmpy import Driver, Machine
 
 from scooter.constants import BROKER, PORT
 from scooter.mqtt_client import MqttClient
-from scooter.scooter import Scooter
+from scooter.scooter_logic import ScooterLogic
 
 
 def main() -> None:
-    scooter = Scooter()
+    scooter = ScooterLogic()
     scooter_machine = Machine(
         name=repr(scooter),
         transitions=[],
@@ -18,8 +18,7 @@ def main() -> None:
     driver = Driver()
     driver.add_machine(scooter_machine)
 
-    mqtt_client = MqttClient()
-    mqtt_client.stm_driver = driver
+    mqtt_client = MqttClient(driver)
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
