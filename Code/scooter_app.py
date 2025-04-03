@@ -11,7 +11,7 @@ s0 = {
 }
 s1 = {
     "name": "reserved",
-    "on_enter": ["lights_reserved()"],
+    "on_enter": "lights_reserved()",
 }
 s2 = {
     "name": "driving",
@@ -81,6 +81,7 @@ def main() -> None:
         states=states,
     )
     scooter.stm = scooter_machine
+    
 
     driver = Driver()
     driver.add_machine(scooter_machine)
