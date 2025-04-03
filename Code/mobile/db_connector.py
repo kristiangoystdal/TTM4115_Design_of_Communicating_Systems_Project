@@ -363,10 +363,8 @@ def get_charging_stations() -> list[dict[str, float]]:
 
 
 def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
-    # End any existing booking before starting a drive
-    end_booking(scooter_id, start_time)
-
     conn, cur = connect_db()
+    # End any existing booking before starting a drive
     existing_booking = cur.execute(
         """
         SELECT id FROM drives
