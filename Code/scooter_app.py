@@ -7,11 +7,11 @@ from scooter.scooter_logic import ScooterLogic
 
 s0 = {
     "name": "idle",
-    "on_enter": "lights_free()",
+    "on_enter": "scooter.lights_free()",
 }
 s1 = {
     "name": "reserved",
-    "on_enter": "lights_reserved()",
+    "on_enter": "scooter.lights_reserved()",
 }
 s2 = {
     "name": "driving",
@@ -89,6 +89,7 @@ def main() -> None:
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
+    
 
 if __name__ == "__main__":
     main()
