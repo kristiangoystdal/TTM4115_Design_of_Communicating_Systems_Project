@@ -1,36 +1,26 @@
-import logging
 from stmpy import Driver, Machine
 from scooter.constants import BROKER, PORT
 from scooter.mqtt_client import MqttClient
 from scooter.scooter_logic import ScooterLogic
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-# from stmpy import Driver, Machine
-
-# from scooter.constants import BROKER, PORT
-# from scooter.mqtt_client import MqttClient
-# from scooter.scooter_logic import ScooterLogic
-
 
 s0 = {
     "name": "idle",
-    "on_enter": "lights_free()",
+    "entry": "lights_free()",
 }
 s1 = {
     "name": "reserved",
-    "on_enter": "lights_reserved()",
+    "entry": "lights_reserved()",
 }
 s2 = {
     "name": "driving",
-    "on_enter": "start_display(); enable_motor(); unlock_wheel()",
-    "on_exit": "stop_display(); disable_motor(); lock_wheel()",
+    "entry": "start_display(); enable_motor(); unlock_wheel()",
+    "exit": "stop_display(); disable_motor(); lock_wheel()",
 }
 s3 = {
     "name": "charging",
-    "on_enter": "enable_charger()",
-    "on_exit": "disable_charger()",
+    "entry": "enable_charger()",
+    "exit": "disable_charger()",
 }
 states = [s0, s1, s2, s3]
 
@@ -94,20 +84,11 @@ def main() -> None:
     driver = Driver()
     driver.add_machine(scooter_machine)
 
-    # Enable STMPY logging
-    logging.getLogger('stmpy').setLevel(logging.DEBUG)
-
     mqtt_client = MqttClient(driver)
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
 
-    logger.debug(
-        "Does 'lights_reserved' exist on scooter? %s",
-        hasattr(scooter, "lights_reserved"),
-    )
-
-    logger.debug("scooter.lights_reserved() is: %s", scooter.lights_reserved)
 
 if __name__ == "__main__":
     main()
