@@ -10,7 +10,7 @@ from .sense_hat_handler import set_led_matrix
 from scooter.color import Color
 
 
-@dataclass(slots=True)
+@dataclass
 class ScooterLogic:
     scooter_id: int = field(default_factory=IdCounter.next, init=False)
     mqtt_client: Client = field(default=None, init=False)  # type: ignore
