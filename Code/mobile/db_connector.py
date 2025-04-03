@@ -170,7 +170,7 @@ def end_booking(booking_id: int, end_time: str) -> float:
         """
         UPDATE bookings
         SET end_time = ?, is_active = 0
-        WHERE id = ? AND end_time IS NULL
+        WHERE scooter_id = ? AND end_time IS NULL
         """,
         (end_time, booking_id),
     )
@@ -290,13 +290,13 @@ def get_user_active_bookings(
     ]
 
 
-def get_user_booking_history(
+def get_user_drive_history(
     user_id: int,
 ) -> list[dict[str, float | int | str]]:
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time
+        SELECT d.scooter_id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.user_id = ? AND d.is_active = 0
@@ -367,7 +367,7 @@ def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
     # End any existing booking before starting a drive
     existing_booking = cur.execute(
         """
-        SELECT id FROM drives
+        SELECT scooter_id FROM drives
         WHERE scooter_id = ? AND end_time IS NULL
         """,
         (scooter_id,),

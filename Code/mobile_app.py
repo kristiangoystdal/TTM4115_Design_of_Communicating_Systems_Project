@@ -27,7 +27,7 @@ from mobile.db_connector import (
     get_charging_stations,
     get_scooters,
     get_user_active_bookings,
-    get_user_booking_history,
+    get_user_drive_history,
     register_user,
     end_booking,
     start_drive,
@@ -296,7 +296,7 @@ def history_page(request: Request) -> Response:
 
     conn.close()
 
-    history = get_user_booking_history(user_id)
+    history = get_user_drive_history(user_id)
     return JSONResponse(content={"success": True, "history": history})
 
 
@@ -341,13 +341,13 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
             status_code=401,
         )
 
-    end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_drive(scooter_id, end_time)
+    end_time_str = datetime.now(TIMEZONE).isoformat()
+    price = end_drive(scooter_id, end_time_str)
 
     conn, cur = connect_db()
     drive = cur.execute(
         """
-        SELECT d.id, d.driving_time, d.end_time, s.latitude, s.longitude
+        SELECT d.scooter_id, d.driving_time, d.end_time, s.latitude, s.longitude
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.scooter_id = ?
@@ -361,14 +361,31 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
             content={"error": "Failed to end drive"}, status_code=400
         )
 
-    driving_time = datetime.fromisoformat(drive[1]).astimezone(TIMEZONE)
-    end_time_date = datetime.fromisoformat(drive[2]).astimezone(TIMEZONE)
-    minutes = (end_time_date - driving_time).total_seconds() / 60
+    # Korrekt parsing – håndterer både str og datetime
+    driving_time_raw = drive[1]
+    end_time_raw = drive[2]
+
+    if isinstance(driving_time_raw, str):
+        driving_time = datetime.fromisoformat(driving_time_raw)
+    else:
+        driving_time = driving_time_raw
+
+    if isinstance(end_time_raw, str):
+        end_time = datetime.fromisoformat(end_time_raw)
+    else:
+        end_time = end_time_raw
+
+    # Konverter til riktig tidssone
+    driving_time = driving_time.astimezone(TIMEZONE)
+    end_time = end_time.astimezone(TIMEZONE)
+
+    # Beregn varighet i minutter
+    minutes = (end_time - driving_time).total_seconds() / 60
 
     drive_details = {
         "id": drive[0],
         "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": round(minutes),
         "price": round(price, 2),
     }

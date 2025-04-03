@@ -112,6 +112,15 @@ const cancelScooter = async () => {
 
 const toggleDrive = async () => {
   loading.value = true
+
+  if (props.scooter.is_user_booked && !props.scooter.is_driving) {
+    // Unbook the scooter if the user starts driving
+    await fetch(`/end_booking/${props.scooter.id}`, {
+      method: 'POST',
+    })
+    loading.value = false
+  }
+
   const endpoint = props.scooter.is_driving
     ? `/end_drive/${props.scooter.id}`
     : `/start_drive/${props.scooter.id}`

@@ -5,7 +5,7 @@
       <v-divider></v-divider>
 
       <v-card-text v-if="driveData">
-        <p><strong>Scooter ID:</strong> {{ driveData.drive.id }}</p>
+        <p><strong>Scooter ID:</strong> {{ driveData.drive.scooter_id }}</p>
         <p><strong>Start Time:</strong> {{ driveData.drive.driving_time }}</p>
         <p><strong>End Time:</strong> {{ driveData.drive.end_time }}</p>
         <p><strong>Duration:</strong> {{ driveData.drive.duration }} minutes</p>
