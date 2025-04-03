@@ -457,4 +457,5 @@ def end_drive(scooter_id: int, end_time: str) -> float:
     driving_time = datetime.fromisoformat(driving_time).astimezone(TIMEZONE)
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
     minutes = (end_time_date - driving_time).total_seconds() / 60
+    
     return get_price(minutes)

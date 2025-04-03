@@ -5,11 +5,11 @@
       <v-divider></v-divider>
 
       <v-card-text v-if="driveData">
-        <p><strong>Scooter ID:</strong> {{ driveData.drive.scooter_id }}</p>
-        <p><strong>Start Time:</strong> {{ driveData.drive.driving_time }}</p>
-        <p><strong>End Time:</strong> {{ driveData.drive.end_time }}</p>
-        <p><strong>Duration:</strong> {{ driveData.drive.duration }} minutes</p>
-        <p><strong>Total Price:</strong> {{ driveData.drive.price }} NOK</p>
+        <p><strong>Scooter ID: </strong> {{ driveData.drive.scooter_id }}</p>
+        <p><strong>Start Time: </strong> {{ driveData.drive.driving_time }}</p>
+        <p><strong>End Time: </strong> {{ driveData.drive.end_time }}</p>
+        <p><strong>Duration: </strong> {{ driveData.drive.duration }} minutes</p>
+        <p><strong>Total Price: </strong> {{ driveData.drive.price }} NOK</p>
       </v-card-text>
 
       <v-card-actions class="justify-end">
