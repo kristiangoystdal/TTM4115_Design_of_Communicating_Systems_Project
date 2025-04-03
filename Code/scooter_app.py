@@ -89,7 +89,14 @@ def main() -> None:
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
-    
+
+    print(
+        "[DEBUG] Does 'lights_reserved' exist on scooter?",
+        hasattr(scooter, "lights_reserved"),
+    )
+
+    print("[DEBUG] scooter.lights_reserved() is:", scooter.lights_reserved)
+
 
 if __name__ == "__main__":
     main()
