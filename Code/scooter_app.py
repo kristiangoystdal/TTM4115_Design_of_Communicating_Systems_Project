@@ -82,7 +82,7 @@ def main() -> None:
     )
     scooter.stm = scooter_machine
     
-    driver = Driver(trace_funs=[print])  # will show internal stmpy events
+    driver = Driver(trace_func=print)  # will show internal stmpy events
 
     driver.add_machine(scooter_machine)
 
