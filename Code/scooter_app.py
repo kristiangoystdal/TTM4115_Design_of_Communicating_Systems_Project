@@ -82,9 +82,10 @@ def main() -> None:
     )
     scooter.stm = scooter_machine
     
-    driver = Driver(trace_func=print)  # will show internal stmpy events
 
+    driver = Driver()
     driver.add_machine(scooter_machine)
+    driver.trace = True
 
     mqtt_client = MqttClient(driver)
 
