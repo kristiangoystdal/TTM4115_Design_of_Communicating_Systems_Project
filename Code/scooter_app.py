@@ -7,11 +7,11 @@ from scooter.scooter_logic import ScooterLogic
 
 s0 = {
     "name": "idle",
-    "on_enter": "scooter.lights_free()",
+    "on_enter": "lights_free()",
 }
 s1 = {
     "name": "reserved",
-    "on_enter": "scooter.lights_reserved()",
+    "on_enter": ["lights_reserved()"],
 }
 s2 = {
     "name": "driving",
@@ -81,7 +81,6 @@ def main() -> None:
         states=states,
     )
     scooter.stm = scooter_machine
-    
 
     driver = Driver()
     driver.add_machine(scooter_machine)
