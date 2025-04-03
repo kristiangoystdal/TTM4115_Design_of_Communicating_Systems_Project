@@ -170,7 +170,7 @@ def end_booking(booking_id: int, end_time: str) -> float:
         """
         UPDATE bookings
         SET end_time = ?, is_active = 0
-        WHERE scooter_id = ? AND end_time IS NULL
+        WHERE id = ? AND end_time IS NULL
         """,
         (end_time, booking_id),
     )
