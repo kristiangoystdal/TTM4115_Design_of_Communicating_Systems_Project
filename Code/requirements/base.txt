@@ -6,4 +6,4 @@ python-multipart==0.0.20
 pytz==2025.2
 sense-hat==2.6.0
 stmpy==0.7.5
-uvicorn==0.34.0
+uvicorn[standard]==0.34.0
