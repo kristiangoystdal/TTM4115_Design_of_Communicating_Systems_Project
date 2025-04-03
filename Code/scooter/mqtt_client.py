@@ -27,16 +27,17 @@ class MqttClient:
         self, client: Client, userdata: Any, msg: MQTTMessage
     ) -> None:
         print(f"on_message(): {msg.topic} - {msg.payload.decode()}")
-        
+
         if self.stm_driver:
-            topic_parts = msg.topic.split('/')
+            topic_parts = msg.topic.split("/")
             if len(topic_parts) > 1:
                 stm_name = "ScooterLogic(" + topic_parts[1] + ")"
                 trigger = msg.payload.decode()
                 if trigger:
-                    self.stm_driver.send(trigger, stm_name, msg.payload.decode())
+                    self.stm_driver.send(
+                        trigger, stm_name, msg.payload.decode()
+                    )
                     print(f"Trigger sent: {trigger} to {stm_name}")
-        
 
     def start(self, broker: str, port: int) -> None:
         print(f"Connecting to {broker}:{port}")
