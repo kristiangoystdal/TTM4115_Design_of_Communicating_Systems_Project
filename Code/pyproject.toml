@@ -27,5 +27,5 @@ enable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = ["stmpy.*"]
+module = ["stmpy.*", "sense_hat.*"]
 ignore_missing_imports = true
