@@ -89,6 +89,9 @@ def main() -> None:
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
+    
+    scooter.lights_reserved()
+
 
 
 if __name__ == "__main__":

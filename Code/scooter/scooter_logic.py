@@ -26,4 +26,4 @@ class ScooterLogic:
     def lights_reserved(self) -> None:
         """Set the LED matrix to reserved color."""
         print("Entering reserved state: Setting LED matrix to reserved color.")
-        set_led_matrix(ScooterLogic.RESERVED_COLOR)
+        set_led_matrix(self.RESERVED_COLOR)
