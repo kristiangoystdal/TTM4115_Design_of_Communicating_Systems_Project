@@ -98,7 +98,7 @@ def get_scooters() -> list[dict[str, Any]]:
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT id, latitude, longitude, battery_level, is_booked
+        SELECT id, latitude, longitude, battery_level, is_booked, is_driving
         FROM scooters
         WHERE battery_level > 20
         """
@@ -110,6 +110,7 @@ def get_scooters() -> list[dict[str, Any]]:
             "longitude": row[2],
             "battery_level": row[3],
             "is_booked": bool(row[4]),
+            "is_driving": bool(row[5]),
         }
         for row in rows
     ]
@@ -163,6 +164,8 @@ def book_scooter(user_id: int, scooter_id: int, booking_time: str) -> bool:
 
 def end_booking(booking_id: int, end_time: str) -> float:
     conn, cur = connect_db()
+
+    # Oppdater booking
     cur.execute(
         """
         UPDATE bookings
@@ -173,11 +176,12 @@ def end_booking(booking_id: int, end_time: str) -> float:
     )
     conn.commit()
 
+    # Hent bookingen igjen
     row = cur.execute(
         """
         SELECT scooter_id, booking_time, end_time
         FROM bookings
-        WHERE id = ?
+        WHERE scooter_id = ?
         """,
         (booking_id,),
     ).fetchone()
@@ -186,7 +190,14 @@ def end_booking(booking_id: int, end_time: str) -> float:
         conn.close()
         return 0.0
 
-    scooter_id, booking_time, end_time = row
+    scooter_id, booking_time, actual_end_time = row
+
+    # Ny: sjekk at `actual_end_time` og `booking_time` faktisk finnes
+    if not actual_end_time or not booking_time:
+        conn.close()
+        return 0.0
+
+    # Oppdater scooter-status
     cur.execute(
         """
         UPDATE scooters
@@ -198,9 +209,20 @@ def end_booking(booking_id: int, end_time: str) -> float:
     conn.commit()
     conn.close()
 
-    booking_time = datetime.fromisoformat(booking_time).astimezone(TIMEZONE)
-    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
-    minutes = (end_time_date - booking_time).total_seconds() / 60
+    # Trygg parsing
+    booking_time_dt = (
+        datetime.fromisoformat(booking_time)
+        if isinstance(booking_time, str)
+        else booking_time
+    ).astimezone(TIMEZONE)
+
+    end_time_dt = (
+        datetime.fromisoformat(actual_end_time)
+        if isinstance(actual_end_time, str)
+        else actual_end_time
+    ).astimezone(TIMEZONE)
+
+    minutes = (end_time_dt - booking_time_dt).total_seconds() / 60
     return get_price(minutes)
 
 
@@ -274,10 +296,10 @@ def get_user_booking_history(
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT b.id, s.latitude, s.longitude, s.battery_level, b.booking_time, b.end_time
-        FROM bookings AS b
-        JOIN scooters AS s ON b.scooter_id = s.id
-        WHERE b.user_id = ? AND b.is_active = 0
+        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time
+        FROM drives AS d
+        JOIN scooters AS s ON d.scooter_id = s.id
+        WHERE d.user_id = ? AND d.is_active = 0
         """,
         (user_id,),
     ).fetchall()
@@ -338,3 +360,101 @@ def get_charging_stations() -> list[dict[str, float]]:
     ]
     conn.close()
     return stations
+
+
+def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
+    conn, cur = connect_db()
+    # End any existing booking before starting a drive
+    existing_booking = cur.execute(
+        """
+        SELECT id FROM drives
+        WHERE scooter_id = ? AND end_time IS NULL
+        """,
+        (scooter_id,),
+    ).fetchone()
+
+    if existing_booking:
+        conn.close()
+        return False
+
+    try:
+        cur.execute(
+            """
+            INSERT INTO drives (user_id, scooter_id, driving_time)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, scooter_id, start_time),
+        )
+    except IntegrityError:
+        conn.close()
+        return False
+
+    try:
+        cur.execute(
+            """
+            UPDATE scooters
+            SET is_driving = 1, is_booked = 0
+            WHERE id = ?
+            """,
+            (scooter_id,),
+        )
+    except IntegrityError:
+        conn.close()
+        return False
+
+    conn.commit()
+    conn.close()
+    return True
+
+
+def end_drive(scooter_id: int, end_time: str) -> float:
+    conn, cur = connect_db()
+
+    # Update the drive record
+    cur.execute(
+        """
+        UPDATE drives
+        SET end_time = ?, is_active = 0
+        WHERE scooter_id = ? AND end_time IS NULL
+        """,
+        (end_time, scooter_id),
+    )
+    conn.commit()
+
+    # Fetch the updated drive details
+    row = cur.execute(
+        """
+        SELECT scooter_id, driving_time, end_time
+        FROM drives
+        WHERE scooter_id = ?
+        """,
+        (scooter_id,),
+    ).fetchone()
+
+    if row is None:
+        conn.close()
+        return 0.0
+
+    # Extract data and validate
+    scooter_id_from_drive, driving_time, end_time = row
+    if not driving_time or not end_time:
+        conn.close()
+        return 0.0
+
+    # Update the scooter status
+    cur.execute(
+        """
+        UPDATE scooters
+        SET is_driving = 0, is_booked = 0
+        WHERE id = ?
+        """,
+        (scooter_id_from_drive,),
+    )
+    conn.commit()
+    conn.close()
+
+    # Calculate duration and price
+    driving_time = datetime.fromisoformat(driving_time).astimezone(TIMEZONE)
+    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
+    minutes = (end_time_date - driving_time).total_seconds() / 60
+    return get_price(minutes)

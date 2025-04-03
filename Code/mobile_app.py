@@ -1,12 +1,11 @@
 from datetime import datetime
 
 import uvicorn
-from fastapi import FastAPI, Form, Request, Response
+from fastapi import FastAPI, Form, Request, Response, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import URLSafeSerializer
-
+from itsdangerous import URLSafeSerializer, BadSignature
 from mobile.constants import (
     BOOKINGS_HTML,
     HISTORY_HTML,
@@ -30,14 +29,37 @@ from mobile.db_connector import (
     get_user_active_bookings,
     get_user_booking_history,
     register_user,
+    end_booking,
+    start_drive,
+    end_drive,
+    nuke_db,
 )
 from mobile.helpers import clean_username
 
+from pydantic import BaseModel
+
+
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="mobile/static"), name="static")
+app.mount(
+    "/assets",
+    StaticFiles(directory="mobile/templates/dist_vue/assets"),
+    name="assets",
+)
 
-templates = Jinja2Templates(directory="mobile/templates")
+
+app.mount(
+    "/favicon.ico",
+    StaticFiles(directory="mobile/templates/dist_vue"),
+    name="favicon",
+)
+
+
+templates = Jinja2Templates(directory="mobile/templates/dist_vue")
 serializer = URLSafeSerializer(SECRET_KEY)
 
 
@@ -47,12 +69,27 @@ def get_session(request: Request) -> dict[str, str]:
     return serializer.loads(session)
 
 
+def fetch_user_id(cur, session):
+    if not session or "username" not in session:
+        return None
+
+    row = cur.execute(
+        "SELECT id FROM users WHERE username = ?", (session["username"],)
+    ).fetchone()
+
+    return row[0] if row else None
+
+
+def to_datetime(value):
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    return value
+
+
 @app.get("/")
 def read_root(request: Request) -> Response:
-    session = get_session(request)
-    return templates.TemplateResponse(
-        INDEX_HTML, {"request": request, "session": session}
-    )
+    print("📥 Request to /")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/login")
@@ -60,28 +97,19 @@ def login_form(request: Request) -> Response:
     if session := get_session(request):
         return RedirectResponse(url="/")
     return templates.TemplateResponse(
-        LOGIN_HTML, {"request": request, "session": session}
+        INDEX_HTML, {"request": request, "session": session}
     )
 
 
 @app.post("/login")
-def login(
-    request: Request, username: str = Form(...), password: str = Form(...)
-) -> Response:
-    username = clean_username(username)
+def login(data: AuthRequest) -> Response:
+    username = clean_username(data.username)
 
-    if not check_user(username, password):
-        return templates.TemplateResponse(
-            LOGIN_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "Invalid credentials",
-            },
-        )
+    if not check_user(username, data.password):
+        return JSONResponse({"error": "Invalid credentials"}, status_code=401)
 
-    response = RedirectResponse(url="/", status_code=302)
     session = serializer.dumps({"username": username})
+    response = JSONResponse({"message": "Login successful"})
     response.set_cookie("session", session)
     return response
 
@@ -91,37 +119,42 @@ def register_form(request: Request) -> Response:
     if session := get_session(request):
         return RedirectResponse(url="/")
     return templates.TemplateResponse(
-        REGISTER_HTML, {"request": request, "session": session}
+        INDEX_HTML, {"request": request, "session": session}
     )
 
 
 @app.post("/register")
-def register(
-    request: Request, username: str = Form(...), password: str = Form(...)
-) -> Response:
-    username = clean_username(username)
+def register(data: AuthRequest) -> Response:
+    username = clean_username(data.username)
 
-    if not register_user(username, password):
-        return templates.TemplateResponse(
-            REGISTER_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "Username already exists",
-            },
+    if not register_user(username, data.password):
+        return JSONResponse(
+            {"error": "Username already exists"}, status_code=409
         )
 
-    response = RedirectResponse(url="/", status_code=302)
     session = serializer.dumps({"username": username})
+    response = JSONResponse({"message": "Registration successful"})
     response.set_cookie("session", session)
     return response
 
 
-@app.get("/logout")
+@app.post("/logout")
 def logout() -> RedirectResponse:
     response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie("session")
     return response
+
+
+def get_me(request: Request):
+    session_cookie = request.cookies.get("session")
+    if not session_cookie:
+        raise HTTPException(status_code=401, detail="Not logged in")
+
+    try:
+        session_data = serializer.loads(session_cookie)
+        return {"username": session_data["username"]}
+    except BadSignature:
+        raise HTTPException(status_code=401, detail="Invalid session")
 
 
 @app.get("/scooters", response_model=list[dict[str, float | int | str]])
@@ -131,10 +164,7 @@ def scooters(request: Request) -> JSONResponse:
     conn, cur = connect_db()
 
     if session:
-        user_id = cur.execute(
-            "SELECT id FROM users WHERE username = ?", (session["username"],)
-        ).fetchone()[0]
-        conn.close()
+        user_id = fetch_user_id(cur, session)
 
     all_scooters = get_scooters()
     rows = cur.execute(
@@ -160,38 +190,20 @@ def scooters(request: Request) -> JSONResponse:
 @app.post("/book/{scooter_id}")
 def book_scooter_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to book a scooter.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in."}, status_code=401
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
     conn.close()
+
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
 
     if book_scooter(user_id, scooter_id, booking_time):
-        return templates.TemplateResponse(
-            INDEX_HTML,
-            {
-                "request": request,
-                "session": session,
-                "message": f"Scooter {scooter_id} booked successfully!",
-            },
-        )
-    return templates.TemplateResponse(
-        INDEX_HTML,
-        {
-            "request": request,
-            "session": session,
-            "error": "Scooter is already booked or unavailable.",
-        },
+        return JSONResponse({"success": True, "message": "Scooter booked"})
+    return JSONResponse(
+        {"error": "Scooter already booked or unavailable."}, status_code=400
     )
 
 
@@ -199,7 +211,7 @@ def book_scooter_route(request: Request, scooter_id: int) -> Response:
 def bookings_page(request: Request) -> Response:
     if not (session := get_session(request)):
         return templates.TemplateResponse(
-            LOGIN_HTML,
+            INDEX_HTML,
             {
                 "request": request,
                 "session": {},
@@ -208,14 +220,17 @@ def bookings_page(request: Request) -> Response:
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
     conn.close()
 
     bookings = get_user_active_bookings(user_id)
     return templates.TemplateResponse(
-        BOOKINGS_HTML,
+        INDEX_HTML,
         {"request": request, "session": session, "bookings": bookings},
     )
 
@@ -223,13 +238,9 @@ def bookings_page(request: Request) -> Response:
 @app.post("/end_booking/{booking_id}")
 def end_booking_route(request: Request, booking_id: int) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            LOGIN_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to end a booking.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in to end a booking."},
+            status_code=401,
         )
 
     end_time = datetime.now(TIMEZONE).isoformat()
@@ -241,7 +252,7 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
         SELECT b.id, b.booking_time, b.end_time, s.latitude, s.longitude
         FROM bookings AS b
         JOIN scooters AS s ON b.scooter_id = s.id
-        WHERE b.id = ?
+        WHERE b.scooter_id = ?
         """,
         (booking_id,),
     ).fetchone()
@@ -252,8 +263,9 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
             content={"error": "Failed to end booking"}, status_code=400
         )
 
-    booking_time = datetime.fromisoformat(booking[1]).astimezone(TIMEZONE)
-    end_time_date = datetime.fromisoformat(booking[2]).astimezone(TIMEZONE)
+    booking_time = to_datetime(booking[1]).astimezone(TIMEZONE)
+    end_time_date = to_datetime(booking[2]).astimezone(TIMEZONE)
+
     minutes = (end_time_date - booking_time).total_seconds() / 60
 
     booking_details = {
@@ -264,39 +276,28 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
         "price": round(price, 2),
     }
 
-    return templates.TemplateResponse(
-        RECEIPT_HTML,
-        {
-            "request": request,
-            "session": session,
-            "booking": booking_details,
-        },
-    )
+    return JSONResponse(content={"success": True, "booking": booking_details})
 
 
 @app.get("/history")
 def history_page(request: Request) -> Response:
     if not (session := get_session(request)):
-        return templates.TemplateResponse(
-            LOGIN_HTML,
-            {
-                "request": request,
-                "session": {},
-                "error": "You must be logged in to view your booking history.",
-            },
+        return JSONResponse(
+            {"error": "You must be logged in to view your booking history."},
+            status_code=401,
         )
 
     conn, cur = connect_db()
-    user_id = cur.execute(
-        "SELECT id FROM users WHERE username = ?", (session["username"],)
-    ).fetchone()[0]
+    user_id = fetch_user_id(cur, session)
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
     conn.close()
 
     history = get_user_booking_history(user_id)
-    return templates.TemplateResponse(
-        HISTORY_HTML,
-        {"request": request, "session": session, "history": history},
-    )
+    return JSONResponse(content={"success": True, "history": history})
 
 
 @app.get("/charging_stations", response_model=list[dict[str, float]])
@@ -305,7 +306,78 @@ def charging_stations() -> JSONResponse:
     return JSONResponse(content=stations_data)
 
 
+@app.post("/start_drive/{scooter_id}")
+def start_drive_route(request: Request, scooter_id: int) -> Response:
+    if not (session := get_session(request)):
+        return JSONResponse(
+            {"error": "You must be logged in to start a drive."},
+            status_code=401,
+        )
+
+    conn, cur = connect_db()
+    user_id = fetch_user_id(cur, session)
+    if not user_id:
+        return JSONResponse(
+            {"error": "Invalid session or user"}, status_code=401
+        )
+
+    conn.close()
+    booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
+
+    if start_drive(user_id, scooter_id, booking_time):
+        return JSONResponse(
+            {"success": True, "message": "Scooter started successfully"}
+        )
+    return JSONResponse(
+        {"error": "Scooter already booked or unavailable."}, status_code=400
+    )
+
+
+@app.post("/end_drive/{scooter_id}")
+def end_drive_route(request: Request, scooter_id: int) -> Response:
+    if not (session := get_session(request)):
+        return JSONResponse(
+            {"error": "You must be logged in to end a drive."},
+            status_code=401,
+        )
+
+    end_time = datetime.now(TIMEZONE).isoformat()
+    price = end_drive(scooter_id, end_time)
+
+    conn, cur = connect_db()
+    drive = cur.execute(
+        """
+        SELECT d.id, d.driving_time, d.end_time, s.latitude, s.longitude
+        FROM drives AS d
+        JOIN scooters AS s ON d.scooter_id = s.id
+        WHERE d.scooter_id = ?
+        """,
+        (scooter_id,),
+    ).fetchone()
+    conn.close()
+
+    if not drive:
+        return JSONResponse(
+            content={"error": "Failed to end drive"}, status_code=400
+        )
+
+    driving_time = datetime.fromisoformat(drive[1]).astimezone(TIMEZONE)
+    end_time_date = datetime.fromisoformat(drive[2]).astimezone(TIMEZONE)
+    minutes = (end_time_date - driving_time).total_seconds() / 60
+
+    drive_details = {
+        "id": drive[0],
+        "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": round(minutes),
+        "price": round(price, 2),
+    }
+
+    return JSONResponse(content={"success": True, "drive": drive_details})
+
+
 def main() -> None:
+    nuke_db()
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)
