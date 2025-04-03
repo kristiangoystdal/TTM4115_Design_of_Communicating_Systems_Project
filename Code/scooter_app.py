@@ -1,8 +1,17 @@
+import logging
 from stmpy import Driver, Machine
-
 from scooter.constants import BROKER, PORT
 from scooter.mqtt_client import MqttClient
 from scooter.scooter_logic import ScooterLogic
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+# from stmpy import Driver, Machine
+
+# from scooter.constants import BROKER, PORT
+# from scooter.mqtt_client import MqttClient
+# from scooter.scooter_logic import ScooterLogic
 
 
 s0 = {
@@ -79,26 +88,26 @@ def main() -> None:
         transitions=transitions,
         obj=scooter,
         states=states,
-        trace_func=print,  # ✅ This is the magic!
     )
     scooter.stm = scooter_machine
 
     driver = Driver()
     driver.add_machine(scooter_machine)
-    driver.trace = True
+
+    # Enable STMPY logging
+    logging.getLogger('stmpy').setLevel(logging.DEBUG)
 
     mqtt_client = MqttClient(driver)
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
 
-    print(
-        "[DEBUG] Does 'lights_reserved' exist on scooter?",
+    logger.debug(
+        "Does 'lights_reserved' exist on scooter? %s",
         hasattr(scooter, "lights_reserved"),
     )
 
-    print("[DEBUG] scooter.lights_reserved() is:", scooter.lights_reserved)
-
+    logger.debug("scooter.lights_reserved() is: %s", scooter.lights_reserved)
 
 if __name__ == "__main__":
     main()
