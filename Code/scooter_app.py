@@ -11,8 +11,9 @@ s0 = {
 }
 s1 = {
     "name": "reserved",
-    "on_enter": "lights_reserved()",
+    "on_enter": "print_reserved()",
 }
+
 s2 = {
     "name": "driving",
     "on_enter": "start_display(); enable_motor(); unlock_wheel()",
@@ -89,9 +90,8 @@ def main() -> None:
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
-    
-    scooter.lights_reserved()
 
+    scooter.lights_reserved()
 
 
 if __name__ == "__main__":
