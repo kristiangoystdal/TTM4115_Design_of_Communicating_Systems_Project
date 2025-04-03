@@ -79,9 +79,9 @@ def main() -> None:
         transitions=transitions,
         obj=scooter,
         states=states,
+        trace_func=print,  # ✅ This is the magic!
     )
     scooter.stm = scooter_machine
-    
 
     driver = Driver()
     driver.add_machine(scooter_machine)
@@ -98,7 +98,6 @@ def main() -> None:
     )
 
     print("[DEBUG] scooter.lights_reserved() is:", scooter.lights_reserved)
-
 
 
 if __name__ == "__main__":
