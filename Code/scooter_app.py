@@ -76,12 +76,18 @@ t10 = {
     "trigger": "unlock",
 }
 t11 = {
+    "source": "charging",
+    "target": "reserved",
+    "trigger": "reserve",
+}
+t12 = {
     "source": "idle",
     "target": "charging",
     "trigger": "too_hot",
 }
 
-transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]
+
+transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12]
 
 
 def main() -> None:
@@ -100,8 +106,7 @@ def main() -> None:
     mqtt_client = MqttClient(driver)
 
     driver.start()
-    mqtt_client.start(BROKER, PORT)     
-     
+    mqtt_client.start(BROKER, PORT)
 
 
 if __name__ == "__main__":
