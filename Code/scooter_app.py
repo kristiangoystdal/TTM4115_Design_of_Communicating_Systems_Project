@@ -80,6 +80,7 @@ t11 = {
     "target": "charging",
     "trigger": "too_hot",
 }
+
 transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]
 
 
@@ -90,6 +91,7 @@ def main() -> None:
         transitions=transitions,
         obj=scooter,
         states=states,
+        auto_transitions=False,
     )
     scooter.stm = scooter_machine
 
