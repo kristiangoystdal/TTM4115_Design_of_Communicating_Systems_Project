@@ -8,7 +8,7 @@ from scooter.sense_hat_handler import get_temperature
 
 s0 = {
     "name": "idle",
-    "entry": "lights_free()",
+    "entry": "lights_free(); start_temp_timer()",
 }
 s1 = {
     "name": "reserved",
@@ -75,7 +75,12 @@ t10 = {
     "target": "driving",
     "trigger": "unlock",
 }
-transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10]
+t11 = {
+    "source": "idle",
+    "target": "charging",
+    "trigger": "too_hot",
+}
+transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]
 
 
 def main() -> None:
@@ -94,15 +99,7 @@ def main() -> None:
     mqtt_client = MqttClient(driver)
 
     driver.start()
-    mqtt_client.start(BROKER, PORT)
-    
-    while True:
-        if (scooter_machine.state == "idle"):
-            temp = get_temperature()
-            if(temp > 30):
-                scooter_machine.send("charge")
-                print("Scooter is charging")
-            
+    mqtt_client.start(BROKER, PORT)            
 
 
 if __name__ == "__main__":

@@ -153,3 +153,12 @@ class ScooterLogic:
             self.animation_timer.cancel()
             self.animation_timer = None
         # set_led_matrix()
+        
+    def start_temp_timer(self):
+        self.stm.start_timer('temp_timer', 5000)  # Every 5 seconds
+
+    def on_temp_timer(self):
+        temp = get_temperature()
+        if temp > 30:
+            self.stm.send('too_hot')
+
