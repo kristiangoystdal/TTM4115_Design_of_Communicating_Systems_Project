@@ -15,6 +15,7 @@ from mobile.constants import (
     REGISTER_HTML,
     SECRET_KEY,
     TIMEZONE,
+    DISCOUNT_RATE,
 )
 from mobile.db_connector import (
     book_scooter,
@@ -242,10 +243,12 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
             {"error": "You must be logged in to end a booking."},
             status_code=401,
         )
+    
+    # apply_discount = request.body()["on_charging_station"]
 
     end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_booking(booking_id, end_time)
-
+    price = end_booking(booking_id, end_time, True)
+    
     conn, cur = connect_db()
     booking = cur.execute(
         """
@@ -340,20 +343,24 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
             {"error": "You must be logged in to end a drive."},
             status_code=401,
         )
+    
+    # apply_discount = request.body()["on_charging_station"]
 
     end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_drive(scooter_id, end_time)
+    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
+    price = end_drive(scooter_id, datetime.now(TIMEZONE).isoformat(), True)
 
     conn, cur = connect_db()
     drive = cur.execute(
         """
-        SELECT d.id, d.driving_time, d.end_time, s.latitude, s.longitude
+        SELECT d.id, d.driving_time
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.scooter_id = ?
         """,
         (scooter_id,),
     ).fetchone()
+
     conn.close()
 
     if not drive:
@@ -362,7 +369,6 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         )
 
     driving_time = datetime.fromisoformat(drive[1]).astimezone(TIMEZONE)
-    end_time_date = datetime.fromisoformat(drive[2]).astimezone(TIMEZONE)
     minutes = (end_time_date - driving_time).total_seconds() / 60
 
     drive_details = {
@@ -370,7 +376,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": round(minutes),
-        "price": round(price, 2),
+        "price": round(price, 2)
     }
 
     return JSONResponse(content={"success": True, "drive": drive_details})

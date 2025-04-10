@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     booking_time TEXT NOT NULL,
     end_time TEXT,
     is_active INTEGER DEFAULT 1,
+    price REAL DEFAULT 0,
     FOREIGN KEY (user_id)
         REFERENCES users (id)
             ON DELETE NO ACTION
@@ -44,6 +45,7 @@ CREATE TABLE IF NOT EXISTS drives (
     driving_time TEXT NOT NULL,
     end_time TEXT,
     is_active INTEGER DEFAULT 1,
+    price REAL DEFAULT 0,
     FOREIGN KEY (user_id)
         REFERENCES users (id)
             ON DELETE NO ACTION
