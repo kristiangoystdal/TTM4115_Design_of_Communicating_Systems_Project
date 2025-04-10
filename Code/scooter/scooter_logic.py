@@ -30,6 +30,9 @@ class ScooterLogic:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.scooter_id})"
 
+    def set_stm(self, stm):
+        self.stm = stm
+
     def lights_reserved(self) -> None:
         """Set the LED matrix to reserved color."""
         print("Entering reserved state: Setting LED matrix to reserved color.")

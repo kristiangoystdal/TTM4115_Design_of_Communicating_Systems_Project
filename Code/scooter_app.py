@@ -92,7 +92,7 @@ def main() -> None:
         obj=scooter,
         states=states,
     )
-    scooter.stm = scooter_machine
+    scooter.set_stm(scooter_machine)  # <- Better and safer
 
     driver = Driver()
     driver.add_machine(scooter_machine)
