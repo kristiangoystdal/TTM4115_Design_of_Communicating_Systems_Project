@@ -161,4 +161,8 @@ class ScooterLogic:
         temp = get_temperature()
         if temp > 30:
             self.stm.send('too_hot')
+        print(f"Temperature: {temp}°C")
+        
+        self.stm.start_timer('temp_timer', 5000)  # Restart the timer
+        
 
