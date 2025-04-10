@@ -19,6 +19,7 @@ from scooter.constants import seven_segment_display_list
 import random as Random
 
 
+@dataclass
 class ScooterLogic:
     scooter_id: int = field(default_factory=IdCounter.next, init=False)
     mqtt_client: Client = field(default=None, init=False)  # type: ignore
