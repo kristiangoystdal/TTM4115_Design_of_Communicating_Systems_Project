@@ -3,7 +3,7 @@ from scooter.constants import BROKER, PORT
 from scooter.mqtt_client import MqttClient
 from scooter.scooter_logic import ScooterLogic
 
-from sense_hat_handler import get_temperature
+from scooter.sense_hat_handler import get_temperature
 
 
 s0 = {
