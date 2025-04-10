@@ -26,5 +26,7 @@ Reserved -d-> Driving : unlock / MQTT(escooters/{id} = "unlock")
 Reserved -l-> Idle : timeout / MQTT(escooters/{id} = "timeout")
 Reserved -l-> Idle : cancel / MQTT(escooters/{id} = "cancel")
 
+Charging -r-> Driving: unlock / MQTT(escooters/{id} = "unlock")
+
 
 @enduml
