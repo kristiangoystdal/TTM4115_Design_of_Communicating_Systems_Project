@@ -1,10 +1,12 @@
 import time
 from datetime import datetime
+from sense_hat import SenseHat
 
-try:
-    from sense_hat import SenseHat  # Real hardware
-except ImportError:
-    from sense_emu import SenseHat  # Emulator
+
+# try:
+#     from sense_hat import SenseHat  # Real hardware
+# except ImportError:
+#     from sense_emu import SenseHat  # Emulator
 
 from scooter.color import Color
 
