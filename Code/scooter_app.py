@@ -102,7 +102,9 @@ def main() -> None:
     driver.start()
     mqtt_client.start(BROKER, PORT)     
     
-    scooter.start_temp_timer()       
+    scooter.start_temp_timer()  
+    print(dir(scooter))
+     
 
 
 if __name__ == "__main__":
