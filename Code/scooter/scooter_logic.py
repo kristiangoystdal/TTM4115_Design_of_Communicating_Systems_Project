@@ -157,12 +157,6 @@ class ScooterLogic:
             self.animation_timer = None
 
     def check_temperature(self):
-        print("==> Timer event: Checking temperature...")
-        temp = get_temperature()
-        print(f"Measured temperature: {temp}°C")
-        if temp > 36:
-            print("🔥 Temperature too hot! Sending 'too_hot' event.")
-            self.stm.send("too_hot")
-        else:
-            print("✅ Temperature is fine, staying idle.")
-
+        temperature = Random.randint(0, 100)
+        if temperature > 80:
+            self.stm.send("too_hot")    
