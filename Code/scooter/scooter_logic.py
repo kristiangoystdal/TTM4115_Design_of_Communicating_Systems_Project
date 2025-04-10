@@ -160,7 +160,7 @@ class ScooterLogic:
         print("==> Timer event: Checking temperature...")
         temp = get_temperature()
         print(f"Measured temperature: {temp}°C")
-        if temp > 30:
+        if temp > 36:
             print("🔥 Temperature too hot! Sending 'too_hot' event.")
             self.stm.send("too_hot")
         else:
