@@ -91,7 +91,6 @@ def main() -> None:
         transitions=transitions,
         obj=scooter,
         states=states,
-        auto_transitions=False,
     )
     scooter.stm = scooter_machine
 
