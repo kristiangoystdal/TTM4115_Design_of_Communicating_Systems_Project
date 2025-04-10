@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS drives (
     scooter_id INTEGER NOT NULL,
     driving_time TEXT NOT NULL,
     end_time TEXT,
+    price REAL,
     is_active INTEGER DEFAULT 1,
     FOREIGN KEY (user_id)
         REFERENCES users (id)

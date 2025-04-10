@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlite3 import Connection, Cursor, IntegrityError
 from typing import Any
 
-from mobile.constants import DATABASE_FILE, SCHEMA_FILE, TIMEZONE
+from mobile.constants import DATABASE_FILE, SCHEMA_FILE, TIMEZONE, DISCOUNT_RATE
 from mobile.helpers import get_price, hash_password
 
 
@@ -162,7 +162,7 @@ def book_scooter(user_id: int, scooter_id: int, booking_time: str) -> bool:
     return True
 
 
-def end_booking(booking_id: int, end_time: str) -> float:
+def end_booking(booking_id: int, end_time: str, apply_discount: bool) -> float:
     conn, cur = connect_db()
 
     # Oppdater booking
@@ -223,7 +223,10 @@ def end_booking(booking_id: int, end_time: str) -> float:
     ).astimezone(TIMEZONE)
 
     minutes = (end_time_dt - booking_time_dt).total_seconds() / 60
-    return get_price(minutes)
+    discount = 0
+    if apply_discount:
+        discount = DISCOUNT_RATE
+    return get_price(minutes, discount)
 
 
 def get_user_bookings(user_id: int) -> dict[str, float | int | str]:
@@ -296,7 +299,7 @@ def get_user_booking_history(
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time
+        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time, d.price
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.user_id = ? AND d.is_active = 0
@@ -311,7 +314,7 @@ def get_user_booking_history(
         booking_time = datetime.fromisoformat(row[4]).astimezone(TIMEZONE)
         end_time = datetime.fromisoformat(row[5]).astimezone(TIMEZONE)
         minutes = (end_time - booking_time).total_seconds() / 60
-        price = get_price(minutes)
+        price = row[6]
         history.append(
             {
                 "id": row[0],
@@ -407,7 +410,8 @@ def start_drive(user_id: int, scooter_id: int, start_time: str) -> bool:
     return True
 
 
-def end_drive(scooter_id: int, end_time: str) -> float:
+def end_drive(scooter_id: int, end_time: str, apply_discount: bool) -> float:
+    """Returns the cost of the drive."""
     conn, cur = connect_db()
 
     # Update the drive record
@@ -441,20 +445,27 @@ def end_drive(scooter_id: int, end_time: str) -> float:
         conn.close()
         return 0.0
 
-    # Update the scooter status
-    cur.execute(
-        """
-        UPDATE scooters
-        SET is_driving = 0, is_booked = 0
-        WHERE id = ?
-        """,
-        (scooter_id_from_drive,),
-    )
-    conn.commit()
-    conn.close()
-
+    discount = 0
+    if apply_discount:
+        discount = DISCOUNT_RATE
+    
     # Calculate duration and price
     driving_time = datetime.fromisoformat(driving_time).astimezone(TIMEZONE)
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
     minutes = (end_time_date - driving_time).total_seconds() / 60
-    return get_price(minutes)
+    price = get_price(minutes, discount)
+
+    # Update the scooter status
+    cur.execute(
+        """
+        UPDATE scooters
+        SET is_driving = 0, is_booked = 0, price = ?
+        WHERE id = ?
+        """,
+        (price, scooter_id_from_drive,),
+    )
+    conn.commit()
+    conn.close()
+
+    return price
+

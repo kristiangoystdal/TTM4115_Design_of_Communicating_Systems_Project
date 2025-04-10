@@ -101,6 +101,9 @@ const cancelScooter = async () => {
   loading.value = true
   const response = await fetch(`/end_booking/${props.scooter.id}`, {
     method: 'POST',
+    body: {
+      on_charging_station: false, // this function is for someone who is cancelling a reservation, meaning they have not started a drive
+    },
   })
   const data = await handleFetchResponse(response)
   if (data) {
@@ -110,21 +113,22 @@ const cancelScooter = async () => {
   loading.value = false
 }
 
-const toggleDrive = async () => {
+const toggleDrive = async (on_charging_station = false) => {
   loading.value = true
-  const endpoint = props.scooter.is_driving
-    ? `/end_drive/${props.scooter.id}`
-    : `/start_drive/${props.scooter.id}`
-  const response = await fetch(endpoint, {
+  const end_drive = props.scooter.is_driving
+  const response = await fetch(`${end_drive ? "/end_drive" : "/start_drive"}/${props.scooter.id}`, {
     method: 'POST',
+    body: {
+      on_charging_station: on_charging_station,
+    },
   })
   const data = await handleFetchResponse(response)
   if (data) {
     localOpen.value = false
     toast.success(
-      props.scooter.is_driving ? 'Drive ended successfully!' : 'Drive started successfully!'
+      end_drive ? 'Drive ended successfully!' : 'Drive started successfully!'
     )
-    if (props.scooter.is_driving) {
+    if (end_drive) {
       emit('drive-data', data)
       console.log(data)
     }

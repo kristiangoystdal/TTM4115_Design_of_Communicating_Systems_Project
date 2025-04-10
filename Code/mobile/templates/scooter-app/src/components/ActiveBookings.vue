@@ -24,7 +24,7 @@
               <v-btn
                 color="error"
                 class="mt-3"
-                @click="endBooking(booking.id)"
+                @click="endBooking(booking.id, false)"
               >
                 End Booking
               </v-btn>
@@ -57,10 +57,11 @@ export default {
         console.error('Failed to load bookings:', err)
       }
     },
-    async endBooking(id) {
+    async endBooking(id, on_charging_station) {
       try {
         const response = await fetch(`/end_booking/${id}`, {
-          method: 'POST'
+          method: 'POST',
+          body: { on_charging_station }
         })
 
         if (response.ok) {

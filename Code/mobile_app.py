@@ -15,6 +15,7 @@ from mobile.constants import (
     REGISTER_HTML,
     SECRET_KEY,
     TIMEZONE,
+    DISCOUNT_RATE,
 )
 from mobile.db_connector import (
     book_scooter,
@@ -242,10 +243,12 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
             {"error": "You must be logged in to end a booking."},
             status_code=401,
         )
+    
+    apply_discount = request.body()["on_charging_station"]
 
     end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_booking(booking_id, end_time)
-
+    price = end_booking(booking_id, end_time, apply_discount)
+    
     conn, cur = connect_db()
     booking = cur.execute(
         """
@@ -340,9 +343,11 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
             {"error": "You must be logged in to end a drive."},
             status_code=401,
         )
+    
+    apply_discount = request.body()["on_charging_station"]
 
     end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_drive(scooter_id, end_time)
+    price = end_drive(scooter_id, end_time, apply_discount)
 
     conn, cur = connect_db()
     drive = cur.execute(
@@ -354,7 +359,14 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         """,
         (scooter_id,),
     ).fetchone()
+
     conn.close()
+    
+    body = request.body()
+    
+    discount = 0
+    if body.on_charging_station:
+        discount = 0.1
 
     if not drive:
         return JSONResponse(
