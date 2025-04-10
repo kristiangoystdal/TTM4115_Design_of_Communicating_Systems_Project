@@ -3,6 +3,8 @@ from scooter.constants import BROKER, PORT
 from scooter.mqtt_client import MqttClient
 from scooter.scooter_logic import ScooterLogic
 
+from sense_hat_handler import get_temperature
+
 
 s0 = {
     "name": "idle",
@@ -93,6 +95,14 @@ def main() -> None:
 
     driver.start()
     mqtt_client.start(BROKER, PORT)
+    
+    while True:
+        if (scooter_machine.state == "idle"):
+            temp = get_temperature()
+            if(temp > 30):
+                scooter_machine.send("charge")
+                print("Scooter is charging")
+            
 
 
 if __name__ == "__main__":

@@ -122,3 +122,6 @@ def print_matrix() -> None:
         print(row_str)
         
 
+def get_temperature() -> float:
+    """Get the current temperature in Celsius."""
+    return sense.get_temperature()
