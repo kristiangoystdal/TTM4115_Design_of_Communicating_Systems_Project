@@ -155,12 +155,8 @@ class ScooterLogic:
         if self.animation_timer:
             self.animation_timer.cancel()
             self.animation_timer = None
-        # set_led_matrix()
 
-    def start_temp_timer(self):
-        self.stm.start_timer("temp_timer", 5000)  # Every 5 seconds
-
-    def on_temp_timer(self):
+    def check_temperature(self):
         print("==> Timer event: Checking temperature...")
         temp = get_temperature()
         print(f"Measured temperature: {temp}°C")
@@ -170,4 +166,3 @@ class ScooterLogic:
         else:
             print("✅ Temperature is fine, staying idle.")
 
-        self.stm.start_timer("temp_timer", 5000)  # Restart timer

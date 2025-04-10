@@ -8,7 +8,7 @@ from scooter.sense_hat_handler import get_temperature
 
 s0 = {
     "name": "idle",
-    "entry": "lights_free()",
+    "entry": "lights_free(); check_temperature()",
 }
 s1 = {
     "name": "reserved",
@@ -101,9 +101,6 @@ def main() -> None:
 
     driver.start()
     mqtt_client.start(BROKER, PORT)     
-    
-    scooter.start_temp_timer()  
-    print(dir(scooter))
      
 
 
