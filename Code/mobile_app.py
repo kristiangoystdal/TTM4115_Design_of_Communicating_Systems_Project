@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import uvicorn
-from fastapi import FastAPI, Form, Request, Response, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -11,23 +11,23 @@ from mobile.constants import (
     SECRET_KEY,
     TIMEZONE,
 )
+
 from mobile.db_connector import (
     book_scooter,
     check_user,
     connect_db,
     create_tables,
     end_booking,
+    end_drive,
     generate_charging_stations,
     generate_scooters,
     get_charging_stations,
     get_scooters,
     get_user_active_bookings,
     get_user_drive_history,
-    register_user,
-    end_booking,
-    start_drive,
-    end_drive,
     nuke_db,
+    register_user,
+    start_drive,
 )
 from mobile.helpers import clean_username
 
@@ -38,6 +38,7 @@ from scooter.constants import BROKER, PORT
 
 client = mqtt.Client()
 client.connect(BROKER, PORT, 60)
+
 
 
 class AuthRequest(BaseModel):
@@ -51,8 +52,6 @@ app.mount(
     StaticFiles(directory="mobile/templates/dist_vue/assets"),
     name="assets",
 )
-
-
 app.mount(
     "/favicon.ico",
     StaticFiles(directory="mobile/templates/dist_vue"),
@@ -412,7 +411,14 @@ def main() -> None:
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)
-    uvicorn.run("mobile_app:app", host="127.0.0.1", port=8_000, reload=True)
+    uvicorn.run(
+        "mobile_app:app",
+        host="127.0.0.1",
+        port=8_000,
+        reload=True,
+        ssl_keyfile="key.pem",
+        ssl_certfile="cert.pem",
+    )
 
 
 if __name__ == "__main__":
