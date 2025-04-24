@@ -5,10 +5,13 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import BadSignature, URLSafeSerializer
-from pydantic import BaseModel
+from itsdangerous import URLSafeSerializer, BadSignature
+from mobile.constants import (
+    INDEX_HTML,
+    SECRET_KEY,
+    TIMEZONE,
+)
 
-from mobile.constants import INDEX_HTML, SECRET_KEY, TIMEZONE
 from mobile.db_connector import (
     book_scooter,
     check_user,
@@ -27,6 +30,15 @@ from mobile.db_connector import (
     start_drive,
 )
 from mobile.helpers import clean_username
+
+from pydantic import BaseModel
+
+import paho.mqtt.client as mqtt
+from scooter.constants import BROKER, PORT
+
+client = mqtt.Client()
+client.connect(BROKER, PORT, 60)
+
 
 
 class AuthRequest(BaseModel):
@@ -187,6 +199,10 @@ def book_scooter_route(request: Request, scooter_id: int) -> Response:
     conn.close()
 
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
+    
+    if user_id:
+        mqtt_topic = f"escooter/{scooter_id}"
+        client.publish(mqtt_topic, "reserve")
 
     if book_scooter(user_id, scooter_id, booking_time):
         return JSONResponse({"success": True, "message": "Scooter booked"})
@@ -237,7 +253,7 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
     conn, cur = connect_db()
     booking = cur.execute(
         """
-        SELECT b.id, b.booking_time, b.end_time, s.latitude, s.longitude
+        SELECT b.scooter_id, b.booking_time, b.end_time, s.latitude, s.longitude
         FROM bookings AS b
         JOIN scooters AS s ON b.scooter_id = s.id
         WHERE b.scooter_id = ?
@@ -263,6 +279,9 @@ def end_booking_route(request: Request, booking_id: int) -> Response:
         "duration": round(minutes),
         "price": round(price, 2),
     }
+    
+    mqtt_topic = f"escooter/{booking[0]}"
+    client.publish(mqtt_topic, "cancel")
 
     return JSONResponse(content={"success": True, "booking": booking_details})
 
@@ -311,6 +330,9 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
 
     conn.close()
     booking_time = datetime.now(TIMEZONE).strftime(r"%Y-%m-%d %H:%M:%S")
+    
+    mqtt_topic = f"escooter/{scooter_id}"
+    client.publish(mqtt_topic, "unlock")
 
     if start_drive(user_id, scooter_id, booking_time):
         return JSONResponse(
@@ -377,6 +399,9 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
         "duration": round(minutes),
         "price": round(price, 2),
     }
+    
+    mqtt_topic = f"escooter/{drive[0]}"
+    client.publish(mqtt_topic, "lock")
 
     return JSONResponse(content={"success": True, "drive": drive_details})
 

@@ -1,27 +1,28 @@
 from stmpy import Driver, Machine
-
 from scooter.constants import BROKER, PORT
 from scooter.mqtt_client import MqttClient
 from scooter.scooter_logic import ScooterLogic
 
+from scooter.sense_hat_handler import get_temperature
+
 
 s0 = {
     "name": "idle",
-    "on_enter": "lights_free()",
+    "entry": "lights_free(); check_temperature()",
 }
 s1 = {
     "name": "reserved",
-    "on_enter": "lights_reserved()",
+    "entry": "lights_reserved()",
 }
 s2 = {
     "name": "driving",
-    "on_enter": "start_display(); enable_motor(); unlock_wheel()",
-    "on_exit": "stop_display(); disable_motor(); lock_wheel()",
+    "entry": "start_display(); enable_motor(); unlock_wheel()",
+    "exit": "stop_display(); disable_motor(); lock_wheel()",
 }
 s3 = {
     "name": "charging",
-    "on_enter": "enable_charger()",
-    "on_exit": "disable_charger()",
+    "entry": "enable_charger()",
+    "exit": "disable_charger()",
 }
 states = [s0, s1, s2, s3]
 
@@ -69,18 +70,35 @@ t9 = {
     "target": "idle",
     "trigger": "no_charge",
 }
-transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9]
+t10 = {
+    "source": "charging",
+    "target": "driving",
+    "trigger": "unlock",
+}
+t11 = {
+    "source": "charging",
+    "target": "reserved",
+    "trigger": "reserve",
+}
+t12 = {
+    "source": "idle",
+    "target": "charging",
+    "trigger": "too_hot",
+}
+
+
+transitions = [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12]
 
 
 def main() -> None:
     scooter = ScooterLogic()
     scooter_machine = Machine(
-        name=repr(scooter),
+        name="ScooterLogic(2)",
         transitions=transitions,
         obj=scooter,
         states=states,
     )
-    scooter.stm = scooter_machine
+    scooter.set_stm(scooter_machine)  # <- Better and safer
 
     driver = Driver()
     driver.add_machine(scooter_machine)
