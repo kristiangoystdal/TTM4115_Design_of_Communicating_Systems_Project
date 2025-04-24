@@ -101,6 +101,10 @@ const cancelScooter = async () => {
   loading.value = true
   const response = await fetch(`/end_booking/${props.scooter.id}`, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ apply_discount: true }),
   })
   const data = await handleFetchResponse(response)
   if (data) {
@@ -117,6 +121,10 @@ const toggleDrive = async () => {
     : `/start_drive/${props.scooter.id}`
   const response = await fetch(endpoint, {
     method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ apply_discount: true }),
   })
   const data = await handleFetchResponse(response)
   if (data) {

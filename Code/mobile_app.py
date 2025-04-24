@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import uvicorn
-from fastapi import FastAPI, Form, Request, Response, HTTPException
+from fastapi import FastAPI, Form, Request, Response, HTTPException, Body
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -43,6 +43,9 @@ from pydantic import BaseModel
 class AuthRequest(BaseModel):
     username: str
     password: str
+
+class DiscountRequest(BaseModel):
+    apply_discount: bool
 
 
 app = FastAPI()
@@ -237,17 +240,15 @@ def bookings_page(request: Request) -> Response:
 
 
 @app.post("/end_booking/{booking_id}")
-def end_booking_route(request: Request, booking_id: int) -> Response:
-    if not (session := get_session(request)):
+def end_booking_route(booking_id: int, data: DiscountRequest) -> Response:
+    if not (session := get_session(data)):
         return JSONResponse(
             {"error": "You must be logged in to end a booking."},
             status_code=401,
         )
     
-    # apply_discount = request.body()["on_charging_station"]
-
     end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_booking(booking_id, end_time, True)
+    price = end_booking(booking_id, end_time, data.apply_discount)
     
     conn, cur = connect_db()
     booking = cur.execute(
@@ -335,20 +336,20 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
         {"error": "Scooter already booked or unavailable."}, status_code=400
     )
 
+class discount(BaseModel):
+    on_charging_station: bool
 
 @app.post("/end_drive/{scooter_id}")
-def end_drive_route(request: Request, scooter_id: int) -> Response:
-    if not (session := get_session(request)):
+def end_drive_route(scooter_id: int, data: DiscountRequest) -> Response:
+    if not (session := get_session(data)):
         return JSONResponse(
             {"error": "You must be logged in to end a drive."},
             status_code=401,
         )
     
-    # apply_discount = request.body()["on_charging_station"]
-
     end_time = datetime.now(TIMEZONE).isoformat()
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
-    price = end_drive(scooter_id, datetime.now(TIMEZONE).isoformat(), True)
+    price = end_drive(scooter_id, datetime.now(TIMEZONE).isoformat(), data.apply_discount)
 
     conn, cur = connect_db()
     drive = cur.execute(

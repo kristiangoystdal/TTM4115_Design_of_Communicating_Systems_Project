@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv(verbose=True)
 
-DISCOUNT_RATE = 0.5
+DISCOUNT_RATE = 0.1
 
 BOOKINGS_HTML = "bookings.html"
 HISTORY_HTML = "history.html"

@@ -60,7 +60,9 @@ export default {
     async endBooking(id) {
       try {
         const response = await fetch(`/end_booking/${id}`, {
-          method: 'POST'
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apply_discount: true }),
         })
 
         if (response.ok) {
