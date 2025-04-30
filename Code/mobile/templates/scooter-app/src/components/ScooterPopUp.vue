@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="localOpen" max-width="400">
+  <v-dialog v-model="localOpen" max-width="420">
     <v-card>
       <v-card-title>Scooter {{ scooter.id }}</v-card-title>
       <v-card-text>
@@ -13,9 +13,15 @@
           @click="scooter.is_user_booked ? cancelScooter() : bookScooter()">
           {{ scooter.is_user_booked ? 'Cancel Reservation' : 'Reserve Scooter' }}
         </v-btn>
-
-        <v-btn :disabled="loading" color="primary" block class="mt-2" @click="toggleDrive">
-          {{ scooter.is_driving ? 'End Drive' : 'Start Drive' }}
+        <div v-if="scooter.is_driving">
+          <input type="checkbox" id="charging_station" v-model="on_charging_station">
+          <label for="apply_discount" class="px-1">Is this scooter parked on a charging station?</label>
+          <v-btn :disabled="loading" color="secondary" block class="mt-2"
+            @click="toggleDrive">End drive
+          </v-btn>
+        </div>
+        <v-btn v-else :disabled="loading" color="secondary" block class="mt-2"
+          @click="toggleDrive">Start drive
         </v-btn>
       </v-card-text>
 
@@ -34,6 +40,8 @@ import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 
 const toast = useToast()
+
+const on_charging_station = ref(false)
 
 const props = defineProps({
   modelValue: Boolean,
@@ -104,7 +112,7 @@ const cancelScooter = async () => {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ apply_discount: true }),
+    body: JSON.stringify({ apply_discount: false }),
   })
   const data = await handleFetchResponse(response)
   if (data) {
@@ -116,16 +124,20 @@ const cancelScooter = async () => {
 
 const toggleDrive = async () => {
   loading.value = true
+  let options = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  };
+
+  if (props.scooter.is_driving) {
+    options.body = JSON.stringify({ apply_discount: on_charging_station.value });
+  }
+
   const endpoint = props.scooter.is_driving
     ? `/end_drive/${props.scooter.id}`
-    : `/start_drive/${props.scooter.id}`
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ apply_discount: true }),
-  })
+    : `/start_drive/${props.scooter.id}`;
+
+  const response = await fetch(endpoint, options);
   const data = await handleFetchResponse(response)
   if (data) {
     localOpen.value = false

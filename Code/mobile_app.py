@@ -241,7 +241,7 @@ def bookings_page(request: Request) -> Response:
 
 @app.post("/end_booking/{booking_id}")
 def end_booking_route(booking_id: int, data: DiscountRequest) -> Response:
-    if not (session := get_session(data)):
+    if not (session := get_session(request)):
         return JSONResponse(
             {"error": "You must be logged in to end a booking."},
             status_code=401,
@@ -341,11 +341,12 @@ class discount(BaseModel):
 
 @app.post("/end_drive/{scooter_id}")
 def end_drive_route(scooter_id: int, data: DiscountRequest) -> Response:
-    if not (session := get_session(data)):
-        return JSONResponse(
-            {"error": "You must be logged in to end a drive."},
-            status_code=401,
-        )
+    # if not (session := get_session(request)):
+    #     return JSONResponse(
+    #         {"error": "You must be logged in to end a drive."},
+    #         status_code=401,
+    #     )
+    print("Ending drive with applying discount:", data.apply_discount)
     
     end_time = datetime.now(TIMEZONE).isoformat()
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)

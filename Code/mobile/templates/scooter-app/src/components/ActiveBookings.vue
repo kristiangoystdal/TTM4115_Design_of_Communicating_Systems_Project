@@ -62,7 +62,7 @@ export default {
         const response = await fetch(`/end_booking/${id}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apply_discount: true }),
+          body: JSON.stringify({ apply_discount: false }),
         })
 
         if (response.ok) {

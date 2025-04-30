@@ -17,7 +17,7 @@
 <script>
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import ScooterPopup from '@/components/ScooterPopup.vue'
+import ScooterPopup from '@/components/ScooterPopUp.vue'
 import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 import ReceiptOverlay from './ReceiptOverlay.vue'
