@@ -24,8 +24,8 @@ def validate_password(username: str, password: str) -> bool:
     return True
 
 
-def get_price(minutes: float) -> float:
-    return round(10 + max(0, 2.5 * minutes), 2)
+def get_price(minutes: float, discount: float) -> float:
+    return round((10 + max(0, 2.5 * minutes)) * (1-discount), 2)
 
 
 def clean_username(username: str) -> str:

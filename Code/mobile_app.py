@@ -1,7 +1,11 @@
 from datetime import datetime
 
 import uvicorn
+<<<<<<< HEAD
 from fastapi import FastAPI, HTTPException, Request, Response
+=======
+from fastapi import FastAPI, Form, Request, Response, HTTPException, Body
+>>>>>>> discount2
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -10,6 +14,7 @@ from mobile.constants import (
     INDEX_HTML,
     SECRET_KEY,
     TIMEZONE,
+    DISCOUNT_RATE,
 )
 
 from mobile.db_connector import (
@@ -44,6 +49,9 @@ client.connect(BROKER, PORT, 60)
 class AuthRequest(BaseModel):
     username: str
     password: str
+
+class DiscountRequest(BaseModel):
+    apply_discount: bool
 
 
 app = FastAPI()
@@ -240,16 +248,16 @@ def bookings_page(request: Request) -> Response:
 
 
 @app.post("/end_booking/{booking_id}")
-def end_booking_route(request: Request, booking_id: int) -> Response:
+def end_booking_route(booking_id: int, data: DiscountRequest) -> Response:
     if not (session := get_session(request)):
         return JSONResponse(
             {"error": "You must be logged in to end a booking."},
             status_code=401,
         )
-
+    
     end_time = datetime.now(TIMEZONE).isoformat()
-    price = end_booking(booking_id, end_time)
-
+    price = end_booking(booking_id, end_time, data.apply_discount)
+    
     conn, cur = connect_db()
     booking = cur.execute(
         """
@@ -342,8 +350,11 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
         {"error": "Scooter already booked or unavailable."}, status_code=400
     )
 
+class discount(BaseModel):
+    on_charging_station: bool
 
 @app.post("/end_drive/{scooter_id}")
+<<<<<<< HEAD
 def end_drive_route(request: Request, scooter_id: int) -> Response:
     if not (session := get_session(request)):
         return JSONResponse(
@@ -353,17 +364,35 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
 
     end_time_str = datetime.now(TIMEZONE).isoformat()
     price = end_drive(scooter_id, end_time_str)
+=======
+def end_drive_route(scooter_id: int, data: DiscountRequest) -> Response:
+    # if not (session := get_session(request)):
+    #     return JSONResponse(
+    #         {"error": "You must be logged in to end a drive."},
+    #         status_code=401,
+    #     )
+    print("Ending drive with applying discount:", data.apply_discount)
+    
+    end_time = datetime.now(TIMEZONE).isoformat()
+    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
+    price = end_drive(scooter_id, datetime.now(TIMEZONE).isoformat(), data.apply_discount)
+>>>>>>> discount2
 
     conn, cur = connect_db()
     drive = cur.execute(
         """
+<<<<<<< HEAD
         SELECT d.scooter_id, d.driving_time, d.end_time, s.latitude, s.longitude
+=======
+        SELECT d.id, d.driving_time
+>>>>>>> discount2
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.scooter_id = ?
         """,
         (scooter_id,),
     ).fetchone()
+
     conn.close()
 
     if not drive:
@@ -371,6 +400,7 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
             content={"error": "Failed to end drive"}, status_code=400
         )
 
+<<<<<<< HEAD
     # Korrekt parsing – håndterer både str og datetime
     driving_time_raw = drive[1]
     end_time_raw = drive[2]
@@ -391,13 +421,17 @@ def end_drive_route(request: Request, scooter_id: int) -> Response:
 
     # Beregn varighet i minutter
     minutes = (end_time - driving_time).total_seconds() / 60
+=======
+    driving_time = datetime.fromisoformat(drive[1]).astimezone(TIMEZONE)
+    minutes = (end_time_date - driving_time).total_seconds() / 60
+>>>>>>> discount2
 
     drive_details = {
         "scooter_id": drive[0],
         "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": round(minutes),
-        "price": round(price, 2),
+        "price": round(price, 2)
     }
     
     mqtt_topic = f"escooter/{drive[0]}"
