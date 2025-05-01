@@ -16,12 +16,10 @@
         <div v-if="scooter.is_driving">
           <input type="checkbox" id="charging_station" v-model="on_charging_station">
           <label for="apply_discount" class="px-1">Is this scooter parked on a charging station?</label>
-          <v-btn :disabled="loading" color="secondary" block class="mt-2"
-            @click="toggleDrive">End drive
+          <v-btn :disabled="loading" color="secondary" block class="mt-2" @click="toggleDrive">End drive
           </v-btn>
         </div>
-        <v-btn v-else :disabled="loading" color="secondary" block class="mt-2"
-          @click="toggleDrive">Start drive
+        <v-btn v-else :disabled="loading" color="secondary" block class="mt-2" @click="toggleDrive">Start drive
         </v-btn>
       </v-card-text>
 
@@ -124,15 +122,19 @@ const cancelScooter = async () => {
 
 const toggleDrive = async () => {
   loading.value = true
-<<<<<<< HEAD
 
   if (props.scooter.is_user_booked && !props.scooter.is_driving) {
     // Unbook the scooter if the user starts driving
     await fetch(`/end_booking/${props.scooter.id}`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ apply_discount: false }),
     })
     loading.value = false
-=======
+  }
+
   let options = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -140,7 +142,6 @@ const toggleDrive = async () => {
 
   if (props.scooter.is_driving) {
     options.body = JSON.stringify({ apply_discount: on_charging_station.value });
->>>>>>> discount2
   }
 
   const endpoint = props.scooter.is_driving
