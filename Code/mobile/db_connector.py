@@ -5,8 +5,13 @@ from datetime import datetime
 from sqlite3 import Connection, Cursor, IntegrityError
 from typing import Any
 
-from mobile.constants import DATABASE_FILE, SCHEMA_FILE, TIMEZONE, DISCOUNT_RATE
-from mobile.helpers import get_price, hash_password
+from mobile.constants import (
+    DATABASE_FILE,
+    DISCOUNT_RATE,
+    SCHEMA_FILE,
+    TIMEZONE,
+)
+from mobile.helpers import get_price, hash_password, validate_password
 
 
 def nuke_db() -> None:
@@ -35,7 +40,7 @@ def create_tables() -> None:
 
 def check_user(username: str, password: str) -> bool:
     conn, cur = connect_db()
-    row = cur.execute(
+    row: tuple[str, str] | None = cur.execute(
         "SELECT password_hash, salt FROM users WHERE username = ?", (username,)
     ).fetchone()
     conn.close()
@@ -49,8 +54,8 @@ def check_user(username: str, password: str) -> bool:
 
 
 def register_user(username: str, password: str) -> bool:
-    # if not validate_password(username, password):
-    #     return False
+    if not validate_password(username, password):
+        return False
 
     conn, cur = connect_db()
     salt = secrets.token_urlsafe(8)
@@ -82,6 +87,7 @@ def generate_scooters(center_lat: float, center_lng: float) -> None:
         lat = center_lat + (secrets.randbelow(200) - 100) * lat_delta
         lng = center_lng + (secrets.randbelow(200) - 100) * ltd_delta
         battery_level = secrets.randbelow(101)
+
         cur.execute(
             """
             INSERT INTO scooters (latitude, longitude, battery_level)
@@ -118,7 +124,9 @@ def get_scooters() -> list[dict[str, Any]]:
     return scooters
 
 
-def book_scooter(user_id: int, scooter_id: int, booking_time: str) -> bool:
+def book_scooter(
+    user_id: int | None, scooter_id: int, booking_time: str
+) -> bool:
     conn, cur = connect_db()
     existing_booking = cur.execute(
         """
@@ -165,7 +173,7 @@ def book_scooter(user_id: int, scooter_id: int, booking_time: str) -> bool:
 def end_booking(booking_id: int, end_time: str, apply_discount: bool) -> float:
     conn, cur = connect_db()
 
-    # Oppdater booking
+    # Update booking
     cur.execute(
         """
         UPDATE bookings
@@ -176,7 +184,7 @@ def end_booking(booking_id: int, end_time: str, apply_discount: bool) -> float:
     )
     conn.commit()
 
-    # Hent bookingen igjen
+    # Fetch booking again
     row = cur.execute(
         """
         SELECT scooter_id, booking_time, end_time
@@ -192,12 +200,12 @@ def end_booking(booking_id: int, end_time: str, apply_discount: bool) -> float:
 
     scooter_id, booking_time, actual_end_time = row
 
-    # Ny: sjekk at `actual_end_time` og `booking_time` faktisk finnes
+    # New: check that `actual_end_time` and `booking_time` actually exist
     if not actual_end_time or not booking_time:
         conn.close()
         return 0.0
 
-    # Oppdater scooter-status
+    # Update scooter status
     cur.execute(
         """
         UPDATE scooters
@@ -208,7 +216,7 @@ def end_booking(booking_id: int, end_time: str, apply_discount: bool) -> float:
     )
     conn.commit()
 
-    # Trygg parsing
+    # Safe parsing
     booking_time_dt = (
         datetime.fromisoformat(booking_time)
         if isinstance(booking_time, str)
@@ -221,10 +229,7 @@ def end_booking(booking_id: int, end_time: str, apply_discount: bool) -> float:
         else actual_end_time
     ).astimezone(TIMEZONE)
 
-    discount = 0
-    if apply_discount:
-        discount = DISCOUNT_RATE
-
+    discount = DISCOUNT_RATE if apply_discount else 0.0
     minutes = (end_time_dt - booking_time_dt).total_seconds() / 60
     price = get_price(minutes, discount)
 
@@ -245,7 +250,8 @@ def get_user_bookings(user_id: int) -> dict[str, float | int | str]:
     conn, cur = connect_db()
     row = cur.execute(
         """
-        SELECT b.id, s.latitude, s.longitude, s.battery_level, b.booking_time, b.end_time, b.price
+        SELECT b.id, s.latitude, s.longitude, s.battery_level, b.booking_time,
+            b.end_time, b.price
         FROM bookings AS b JOIN scooters AS s ON b.scooter_id = s.id
         WHERE b.user_id = ?
         """,
@@ -258,7 +264,7 @@ def get_user_bookings(user_id: int) -> dict[str, float | int | str]:
 
     booking_time: str = row[4]
     end_time: str = row[5]
-    booking: dict[str, float | int | str] = {
+    booking: dict[str, float | str] = {
         "id": row[0],
         "latitude": row[1],
         "longitude": row[2],
@@ -273,7 +279,7 @@ def get_user_bookings(user_id: int) -> dict[str, float | int | str]:
 
 def get_user_active_bookings(
     user_id: int,
-) -> list[dict[str, float | int | str]]:
+) -> list[dict[str, float | str]]:
     conn, cur = connect_db()
     rows = cur.execute(
         """
@@ -300,11 +306,12 @@ def get_user_active_bookings(
 
 def get_user_drive_history(
     user_id: int,
-) -> list[dict[str, float | int | str]]:
+) -> list[dict[str, float | str]]:
     conn, cur = connect_db()
     rows = cur.execute(
         """
-        SELECT d.scooter_id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time, d.price
+        SELECT d.scooter_id, s.latitude, s.longitude, s.battery_level,
+            d.driving_time, d.end_time, d.price
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.user_id = ? AND d.is_active = 0
@@ -313,7 +320,7 @@ def get_user_drive_history(
     ).fetchall()
     conn.close()
 
-    history: list[dict[str, float | int | str]] = []
+    history: list[dict[str, float | str]] = []
 
     for row in rows:
         booking_time = datetime.fromisoformat(row[4]).astimezone(TIMEZONE)
@@ -458,9 +465,7 @@ def end_drive(scooter_id: int, end_time: str, apply_discount: bool) -> float:
     )
     conn.commit()
 
-    discount = 0
-    if apply_discount:
-        discount = DISCOUNT_RATE
+    discount = DISCOUNT_RATE if apply_discount else 0.0
 
     # Calculate duration and price
     driving_time = datetime.fromisoformat(driving_time).astimezone(TIMEZONE)

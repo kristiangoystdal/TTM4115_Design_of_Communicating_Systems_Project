@@ -7,14 +7,13 @@ from dotenv import load_dotenv
 
 load_dotenv(verbose=True)
 
+HOST = "127.0.0.1"
+PORT = 8_000
+REDIRECT_PORT = 8_001
+
 DISCOUNT_RATE = 0.3
 
-BOOKINGS_HTML = "bookings.html"
-HISTORY_HTML = "history.html"
 INDEX_HTML = "index.html"
-LOGIN_HTML = "login.html"
-RECEIPT_HTML = "receipt.html"
-REGISTER_HTML = "register.html"
 
 TIMEZONE = pytz.timezone("Europe/Oslo")
 

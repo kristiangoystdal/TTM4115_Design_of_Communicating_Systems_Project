@@ -1,22 +1,26 @@
+import random
 from dataclasses import dataclass, field
 from threading import Timer
 
 from paho.mqtt.client import Client
 from stmpy import Machine
 
-from scooter.helpers import IdCounter
-from .sense_hat_handler import *
 from scooter.color import Color
 from scooter.constants import (
     BAR,
+    CHARGING_ANIMATION,
+    CHARGING_MARK,
     CHECK_MARK,
     X_MARK,
-    CHARGING_MARK,
-    CHARGING_ANIMATION,
+    seven_segment_display_list,
 )
-from scooter.constants import seven_segment_display_list
-
-import random as Random
+from scooter.helpers import IdCounter
+from scooter.sense_hat_handler import (
+    print_matrix,
+    set_led_matrix,
+    set_led_pixel,
+    set_led_pixels,
+)
 
 
 @dataclass
@@ -24,13 +28,13 @@ class ScooterLogic:
     scooter_id: int = field(default_factory=IdCounter.next, init=False)
     mqtt_client: Client = field(default=None, init=False)  # type: ignore
     stm: Machine = field(default=None, init=False)
-    animation_timer: Timer = field(default=None, init=False)
+    animation_timer: Timer | None = field(default=None, init=False)
     animation_step: int = field(default=0, init=False)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.scooter_id})"
 
-    def set_stm(self, stm):
+    def set_stm(self, stm: Machine) -> None:
         self.stm = stm
 
     def lights_reserved(self) -> None:
@@ -74,8 +78,8 @@ class ScooterLogic:
         set_led_matrix()
         set_led_pixels(BAR, Color.BLUE)
 
-        int_1 = Random.randint(0, 1)
-        int_2 = Random.randint(0, 9)
+        int_1 = random.randint(0, 1)
+        int_2 = random.randint(0, 9)
 
         number_1 = seven_segment_display_list(int_1, 0, 3)
         number_2 = seven_segment_display_list(int_2, 4, 3)
@@ -152,11 +156,12 @@ class ScooterLogic:
 
     def stop_animation(self) -> None:
         """Stop any running animation."""
-        if self.animation_timer:
-            self.animation_timer.cancel()
-            self.animation_timer = None
+        if not self.animation_timer:
+            return
 
-    def check_temperature(self):
-        temperature = Random.randint(0, 100)
-        if temperature > 80:
-            self.stm.send("too_hot")    
+        self.animation_timer.cancel()
+        self.animation_timer = None
+
+    def check_temperature(self) -> None:
+        if random.randint(0, 100) > 80:
+            self.stm.send("too_hot")

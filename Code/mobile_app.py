@@ -1,18 +1,17 @@
+from collections.abc import Mapping
 from datetime import datetime
+from sqlite3 import Cursor
 
 import uvicorn
-from fastapi import FastAPI, Form, Request, Response, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import URLSafeSerializer, BadSignature
-from mobile.constants import (
-    INDEX_HTML,
-    SECRET_KEY,
-    TIMEZONE,
-    DISCOUNT_RATE,
-)
+from itsdangerous import BadSignature, URLSafeSerializer
+from paho.mqtt.client import Client
+from pydantic import BaseModel
 
+from mobile.constants import INDEX_HTML, SECRET_KEY, TIMEZONE
 from mobile.db_connector import (
     book_scooter,
     check_user,
@@ -30,14 +29,11 @@ from mobile.db_connector import (
     register_user,
     start_drive,
 )
-from mobile.helpers import clean_username
-
-from pydantic import BaseModel
-
-import paho.mqtt.client as mqtt
+from mobile.helpers import clean_username, to_datetime
 from scooter.constants import BROKER, PORT
 
-client = mqtt.Client()
+
+client = Client()
 client.connect(BROKER, PORT, 60)
 
 
@@ -48,6 +44,10 @@ class AuthRequest(BaseModel):
 
 class DiscountRequest(BaseModel):
     apply_discount: bool
+
+
+class Discount(BaseModel):
+    on_charging_station: bool
 
 
 app = FastAPI()
@@ -70,10 +70,10 @@ serializer = URLSafeSerializer(SECRET_KEY)
 def get_session(request: Request) -> dict[str, str]:
     if (session := request.cookies.get("session")) is None:
         return {}
-    return serializer.loads(session)
+    return serializer.loads(session)  # type: ignore
 
 
-def fetch_user_id(cur, session):
+def fetch_user_id(cur: Cursor, session: Mapping[str, str]) -> int | None:
     if not session or "username" not in session:
         return None
 
@@ -82,12 +82,6 @@ def fetch_user_id(cur, session):
     ).fetchone()
 
     return row[0] if row else None
-
-
-def to_datetime(value):
-    if isinstance(value, str):
-        return datetime.fromisoformat(value)
-    return value
 
 
 @app.get("/")
@@ -149,16 +143,16 @@ def logout() -> RedirectResponse:
     return response
 
 
-def get_me(request: Request):
-    session_cookie = request.cookies.get("session")
-    if not session_cookie:
+def get_me(request: Request) -> dict[str, str]:
+    if not (session_cookie := request.cookies.get("session")):
         raise HTTPException(status_code=401, detail="Not logged in")
 
     try:
         session_data = serializer.loads(session_cookie)
-        return {"username": session_data["username"]}
-    except BadSignature:
-        raise HTTPException(status_code=401, detail="Invalid session")
+    except BadSignature as e:
+        raise HTTPException(status_code=401, detail="Invalid session") from e
+
+    return {"username": session_data["username"]}
 
 
 @app.get("/scooters", response_model=list[dict[str, float | int | str]])
@@ -228,8 +222,8 @@ def bookings_page(request: Request) -> Response:
         )
 
     conn, cur = connect_db()
-    user_id = fetch_user_id(cur, session)
-    if not user_id:
+
+    if not (user_id := fetch_user_id(cur, session)):
         return JSONResponse(
             {"error": "Invalid session or user"}, status_code=401
         )
@@ -244,8 +238,10 @@ def bookings_page(request: Request) -> Response:
 
 
 @app.post("/end_booking/{booking_id}")
-def end_booking_route(request: Request, booking_id: int, data: DiscountRequest) -> Response:
-    if not (session := get_session(request)):
+def end_booking_route(
+    request: Request, booking_id: int, data: DiscountRequest
+) -> Response:
+    if not get_session(request):
         return JSONResponse(
             {"error": "You must be logged in to end a booking."},
             status_code=401,
@@ -281,7 +277,7 @@ def end_booking_route(request: Request, booking_id: int, data: DiscountRequest) 
         "booking_time": booking_time.strftime("%Y-%m-%d %H:%M:%S"),
         "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": round(minutes),
-        "price": round(price, 2),
+        "price": price,
     }
 
     mqtt_topic = f"escooter/{booking[0]}"
@@ -347,23 +343,17 @@ def start_drive_route(request: Request, scooter_id: int) -> Response:
     )
 
 
-class discount(BaseModel):
-    on_charging_station: bool
-
-
 @app.post("/end_drive/{scooter_id}")
 def end_drive_route(
     request: Request, scooter_id: int, data: DiscountRequest
 ) -> Response:
-    if not (session := get_session(request)):
+    if not get_session(request):
         return JSONResponse(
             {"error": "You must be logged in to end a drive."},
             status_code=401,
         )
     print("Ending drive with applying discount:", data.apply_discount)
 
-    end_time = datetime.now(TIMEZONE).isoformat()
-    end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
     price = end_drive(
         scooter_id, datetime.now(TIMEZONE).isoformat(), data.apply_discount
     )
@@ -386,33 +376,33 @@ def end_drive_route(
             content={"error": "Failed to end drive"}, status_code=400
         )
 
-    # Korrekt parsing – håndterer både str og datetime
+    # Correct parsing – handles both str and datetime
     driving_time_raw = drive[1]
     end_time_raw = drive[2]
 
-    if isinstance(driving_time_raw, str):
-        driving_time = datetime.fromisoformat(driving_time_raw)
-    else:
-        driving_time = driving_time_raw
+    driving_time = (
+        datetime.fromisoformat(driving_time_raw)
+        if isinstance(driving_time_raw, str)
+        else driving_time_raw
+    )
 
-    if isinstance(end_time_raw, str):
-        end_time = datetime.fromisoformat(end_time_raw)
-    else:
-        end_time = end_time_raw
+    end_time_date = (
+        datetime.fromisoformat(end_time_raw)
+        if isinstance(end_time_raw, str)
+        else end_time_raw
+    )
 
-    # Konverter til riktig tidssone
+    # Convert to correct timezone
     driving_time = driving_time.astimezone(TIMEZONE)
-    end_time = end_time.astimezone(TIMEZONE)
-
-    # Beregn varighet i minutter
-    minutes = (end_time - driving_time).total_seconds() / 60
+    end_time_date = end_time_date.astimezone(TIMEZONE)
+    minutes = (end_time_date - driving_time).total_seconds() / 60
 
     drive_details = {
         "scooter_id": drive[0],
         "driving_time": driving_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "end_time": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "end_time": end_time_date.strftime("%Y-%m-%d %H:%M:%S"),
         "duration": round(minutes),
-        "price": round(price, 2),
+        "price": price,
     }
 
     mqtt_topic = f"escooter/{drive[0]}"
@@ -426,6 +416,7 @@ def main() -> None:
     create_tables()
     generate_scooters(center_lat=63.422, center_lng=10.395)
     generate_charging_stations(center_lat=63.422, center_lng=10.395)
+
     uvicorn.run(
         "mobile_app:app",
         host="127.0.0.1",

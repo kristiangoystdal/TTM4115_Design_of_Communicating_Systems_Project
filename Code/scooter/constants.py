@@ -1,8 +1,7 @@
 BROKER = "mqtt20.iik.ntnu.no"
-PORT = 1883
+PORT = 1_883
 
 TEAM = "team11"
-
 
 BAR = [
     (0, 0),
@@ -23,7 +22,13 @@ BAR = [
     (7, 1),
 ]
 
-CHECK_MARK = [(1, 5), (2, 6), (3, 5), (4, 4), (5, 3)]
+CHECK_MARK = [
+    (1, 5),
+    (2, 6),
+    (3, 5),
+    (4, 4),
+    (5, 3),
+]
 
 X_MARK = [
     (1, 3),
@@ -64,7 +69,9 @@ CHARGING_ANIMATION = [
 ]
 
 
-def seven_segment_display_list(number, x, y):
+def seven_segment_display_list(
+    number: int, x: int, y: int
+) -> list[tuple[int, int]]:
     # Convert an integer to a 7-segment display representation
     # in area 3x5 starting from top left => (0,3)
     # and return it as a list
@@ -94,7 +101,7 @@ def seven_segment_display_list(number, x, y):
     }
 
     # Convert the number to a string to handle each digit
-    display_list = []
+    display_list: list[tuple[int, int]] = []
 
     seg = segments[number]
 
