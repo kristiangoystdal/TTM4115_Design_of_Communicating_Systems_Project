@@ -304,11 +304,7 @@ def get_user_drive_history(
     conn, cur = connect_db()
     rows = cur.execute(
         """
-<<<<<<< HEAD
-        SELECT d.scooter_id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time
-=======
-        SELECT d.id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time, d.price
->>>>>>> discount2
+        SELECT d.scooter_id, s.latitude, s.longitude, s.battery_level, d.driving_time, d.end_time, d.price
         FROM drives AS d
         JOIN scooters AS s ON d.scooter_id = s.id
         WHERE d.user_id = ? AND d.is_active = 0
@@ -470,10 +466,6 @@ def end_drive(scooter_id: int, end_time: str, apply_discount: bool) -> float:
     driving_time = datetime.fromisoformat(driving_time).astimezone(TIMEZONE)
     end_time_date = datetime.fromisoformat(end_time).astimezone(TIMEZONE)
     minutes = (end_time_date - driving_time).total_seconds() / 60
-<<<<<<< HEAD
-
-    return get_price(minutes)
-=======
     price = get_price(minutes, discount)
 
     cur.execute(
@@ -487,4 +479,3 @@ def end_drive(scooter_id: int, end_time: str, apply_discount: bool) -> float:
     conn.commit()
     conn.close()
     return price
->>>>>>> discount2
