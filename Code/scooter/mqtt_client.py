@@ -28,22 +28,26 @@ class MqttClient:
     ) -> None:
         print(f"on_message(): {msg.topic} - {msg.payload.decode()}")
 
-        if self.stm_driver:
-            topic_parts = msg.topic.split("/")
-            if len(topic_parts) > 1:
-                stm_name = "ScooterLogic(" + topic_parts[1] + ")"
-                trigger = msg.payload.decode()
-                if trigger:
-                    self.stm_driver.send(
-                        trigger, stm_name, msg.payload.decode()
-                    )
-                    print(f"Trigger sent: {trigger} to {stm_name}")
+        if not self.stm_driver:
+            return
+
+        topic_parts = msg.topic.split("/")
+
+        if len(topic_parts) <= 1:
+            return
+
+        stm_name = f"ScooterLogic({topic_parts[1]})"
+
+        if not (trigger := msg.payload.decode()):
+            return
+
+        self.stm_driver.send(trigger, stm_name, msg.payload.decode())
+        print(f"Trigger sent: {trigger} to {stm_name}")
 
     def start(self, broker: str, port: int) -> None:
         print(f"Connecting to {broker}:{port}")
         self.client.connect(broker, port)
 
-        # self.client.subscribe(...)
         thread = Thread(target=self.client.loop_forever)
 
         try:

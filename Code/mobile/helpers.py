@@ -1,4 +1,5 @@
 import hashlib
+from datetime import datetime
 
 from mobile.constants import SECRET_KEY
 
@@ -24,8 +25,14 @@ def validate_password(username: str, password: str) -> bool:
     return True
 
 
+def to_datetime(value: str | datetime) -> datetime:
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    return value
+
+
 def get_price(minutes: float, discount: float) -> float:
-    return round((10 + max(0, 2.5 * minutes)) * (1-discount), 2)
+    return round((10 + max(0, 2.5 * minutes)) * (1 - discount), 2)
 
 
 def clean_username(username: str) -> str:
